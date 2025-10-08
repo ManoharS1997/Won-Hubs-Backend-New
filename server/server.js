@@ -1478,6 +1478,16 @@ app.post('/designs/newAdminPortalForm', (req, res) => {
   })
 })
 
+    if (results.affectedRows > 0) {
+      return res.json({
+        success: true,
+        message: "Record deleted successfully",
+      });
+    } else {
+      return res.status(404).json({ error: "Record not found" });
+    }
+  });
+});
 
 const stripHtml = (str) => {
   if (!str) return null;
