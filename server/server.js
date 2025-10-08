@@ -21,6 +21,7 @@ const userService = require('../soap-service');
 require('dotenv').config();
 const https = require('https');
 const { addClient, removeClient } = require('../socket/WebSocket.js');
+const mongoose = require("mongoose");
 
 const wsdlPath = path.join(__dirname, 'user-service.wsdl');
 const { spawn } = require("child_process");
@@ -56,23 +57,24 @@ const ticketRoutes = require('../routes/ticketRoutes/TicketsRoutes.js')
 const { getReportdata } = require('../controllers/shared/reportControllers.js');
 const RoleRoutes = require('../routes/rolesRoutes/rolesRoutes.js')
 const AlertRoutes = require('../routes/alertRoutes/AlertRoute.js')
-const TicketRoutes=require('../routes/ticketRoutes/TicketsRoutes.js')
-const UserRoutes=require('../routes/users/userRoutes.js')
-const CompanyRoutes=require('../routes/companyRoutes/companyRoutes.js')
-const FlowRoutes=require('../routes/flowRoutes/flowRoutes.js')
-const ConnectionsRoutes=require('../routes/connectionsRoutes/connectionsRoute.js') 
-const CoreTransactionRoutes=require('../routes/Core-TransactionRoutes/Core-TransactionRoutes.js')
-const AdminPlatformroutes=require('../routes/AdminPortalFormRoutes/AdminPortalFormRoutes.js')
-const DesignRoutes=require('../routes/DesignRoutes/DesignRoutes.js')  
-const FeedbackRoutes=require('../routes/FeedbackRoutes/FeedbackRoutes.js')
-const TemplateRoutes=require('../routes/Templates Routes/templateRoutes.js')
-const CITransitionRoutes=require('../routes/CITransitionRoutes/CITransitionRoutes.js')
-const documentRoutes=require('../routes/DocumentRoutes/DocumentRoutes.js')
-const NotificationRoutes=require('../routes/NotificationRoutes/NotificationRoutes.js')
-const ServiceMappingRoutes=require('../routes/Service-MappingRoutes/Service-MappingRoutes.js')
-const SLARoutes=require('../routes/slaRoutes/slaRoutes.js')
-const TaskRoutes=require('../routes/TaskRoutes/tasksRoutes.js')
-const ApprovalRoutes=require('../routes/ApprovalRoutes/ApprovalRoutes.js')
+const TicketRoutes = require('../routes/ticketRoutes/TicketsRoutes.js')
+const UserRoutes = require('../routes/users/userRoutes.js')
+const CompanyRoutes = require('../routes/companyRoutes/companyRoutes.js')
+const FlowRoutes = require('../routes/flowRoutes/flowRoutes.js')
+const ConnectionsRoutes = require('../routes/connectionsRoutes/connectionsRoute.js')
+const CoreTransactionRoutes = require('../routes/Core-TransactionRoutes/Core-TransactionRoutes.js')
+const AdminPlatformroutes = require('../routes/AdminPortalFormRoutes/AdminPortalFormRoutes.js')
+const DesignRoutes = require('../routes/DesignRoutes/DesignRoutes.js')
+const FeedbackRoutes = require('../routes/FeedbackRoutes/FeedbackRoutes.js')
+const TemplateRoutes = require('../routes/Templates Routes/templateRoutes.js')
+const CITransitionRoutes = require('../routes/CITransitionRoutes/CITransitionRoutes.js')
+const documentRoutes = require('../routes/DocumentRoutes/DocumentRoutes.js')
+const NotificationRoutes = require('../routes/NotificationRoutes/NotificationRoutes.js')
+const ServiceMappingRoutes = require('../routes/Service-MappingRoutes/Service-MappingRoutes.js')
+const SLARoutes = require('../routes/slaRoutes/slaRoutes.js')
+const TaskRoutes = require('../routes/TaskRoutes/tasksRoutes.js')
+const ApprovalRoutes = require('../routes/ApprovalRoutes/ApprovalRoutes.js')
+const FormDesignerRoutes = require('../routes/formDesigner/formDesignerRoutes.js')
 // const LocationRoutes=require('../routes/locations/locationsRoutes.js')
 
 const app = express();
@@ -158,7 +160,7 @@ app.use("/api/s3", s3Routes)
 app.use("/api/partners", partnerRoutes)
 app.use("/api", sharedRoutes);
 // Created Routes And Controllers
-app.use("/tickets",ticketRoutes)
+app.use("/tickets", ticketRoutes)
 app.use('/roles', RoleRoutes)
 app.use('/alerts', AlertRoutes)
 app.use('/notifications', NotificationRoutes)
@@ -181,6 +183,7 @@ app.use('/company', CompanyRoutes)
 app.use('/groups', groupRoutes)
 app.use('/locations', locationsRoutes)
 app.use('/departments', departmentsRoutes)
+app.use("/api/form-designer", FormDesignerRoutes);
 app.use((err, req, res, next) => {
   console.error("Unhandled error:", err);
   res.status(500).json({
@@ -1551,17 +1554,25 @@ wss.on('connection', (socket) => {
 
 // /// Function to start the server and Gmail watch process
 async function startServer() {
-  const wsdlXML = await fs.readFile(wsdlPath, 'utf8');
+  const wsdlXML = await fs.readFile(wsdlPath, "utf8");
   // const authClient = await authorize();
-  console.log('starting server...')
+  console.log("starting server...");
 
   // Start the Express server
-  soap.listen(server, '/wsdl', userService, wsdlXML);
-  server.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
-    console.log(`SOAP server running on http://localhost:${PORT}/wsdl?wsdl`);
-    // startWatch(authClient); // Start watching Gmail when the server is ready
-  })
+  mongoose
+    .connect(process.env.MONGO_URI)
+    .then(() => {
+      console.log("✅ MongoDB connected");
+      soap.listen(server, "/wsdl", userService, wsdlXML);
+      server.listen(PORT, () => {
+        console.log(`Server is running on http://localhost:${PORT}`);
+        console.log(`
+          SOAP server running on http://localhost:${PORT}/wsdl?wsdl`
+        );
+        // startWatch(authClient); // Start watching Gmail when the server is ready
+      });
+    })
+    .catch((err) => console.error("❌ MongoDB connection failed:", err));
 }
 
 // // Start the server
