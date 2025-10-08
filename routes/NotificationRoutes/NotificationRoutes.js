@@ -15,7 +15,7 @@ router.post("/newNotifications", createNotification);
 router.put("/update/:notificationId", updateNotification);
 
 // ✅ Get notification by ID
-router.get("/:notificationId", getNotificationById);
+router.get("/:recordId", getNotificationById);
 
 // ✅ Delete notification
 router.delete("/delete/:notificationId", deleteNotification);

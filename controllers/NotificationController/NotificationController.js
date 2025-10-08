@@ -1,6 +1,7 @@
-const db = require("../../config/DB-connection");
+const { db } = require("../../config/DB-connection");
 const jwt = require("jsonwebtoken");
 // const { getOrganizationIdWithUserId } = require("../utils/helperFunctions");
+const { getOrganizationIdWithUserId } = require("../../helpers/findOrgId")
 
 // ✅ Create Notification
 const createNotification = async (req, res) => {
@@ -43,14 +44,18 @@ const createNotification = async (req, res) => {
 
     db.query(insertQuery, values, (error, results) => {
       if (error) {
+        console.log(error, "error here")
+
         console.error("❌ Error inserting notification record:", error);
         return res.status(500).json({ error: "Notifications Internal Server Error" });
       }
+      console.log("✅ Notification record created with ID:", results.insertId);
 
       res.json({ success: true, recordId: results.insertId });
     });
 
   } catch (err) {
+    console.log(err, "error here")
     console.error("Unexpected error:", err);
     return res.status(500).json({ error: "Unexpected Server Error" });
   }
@@ -126,22 +131,37 @@ const updateNotification = async (req, res) => {
 };
 
 // ✅ Get Notification by ID
-const getNotificationById = (req, res) => {
-  const recordId = req.params.notificationId;
+const getNotificationById = async (req, res) => {
+ 
 
+  const recordId = req.params.recordId;
+
+  if (!recordId) {
+    // console.error("⚠️ No recordId found in req.params");
+    return res.status(400).json({ success: false, error: "Missing recordId parameter" });
+  }
   const query = `SELECT * FROM notifications WHERE id = ?`;
-
-  db.query(query, [recordId], (error, results) => {
-    if (error) {
-      console.error("❌ Error fetching notification record:", error);
-      return res.status(500).json({ error: "Notifications Internal server error" });
+  try {
+    const [results] = await db.query(query, [recordId]);
+    if (!results || results.length === 0) {
+      // console.warn("⚠️ No notification found for ID:", recordId);
+      return res.status(404).json({ success: false, error: "Notification not found" });
     }
+    return res.status(200).json({
+      success: true,
+      record: results[0],
+    });
 
-    if (!results.length) return res.status(404).json({ error: "Notification not found" });
-
-    res.json({ record: results[0] });
-  });
+  } catch (error) {
+    console.log("❌ Error while fetching notification record:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Notifications Internal server error",
+    });
+  }
 };
+
+
 
 // ✅ Delete Notification
 const deleteNotification = (req, res) => {

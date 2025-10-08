@@ -162,6 +162,8 @@ app.use("/tickets",ticketRoutes)
 app.use('/roles', RoleRoutes)
 app.use('/alerts', AlertRoutes)
 app.use('/notifications', NotificationRoutes)
+app.use('/api/notifications', NotificationRoutes)
+
 app.use('/ticket', TicketRoutes)
 app.use('/flows', FlowRoutes)
 app.use('/connections', ConnectionsRoutes)
