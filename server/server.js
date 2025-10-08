@@ -20,7 +20,7 @@ const fs = require('fs').promises;
 const userService = require('../soap-service');
 require('dotenv').config();
 const https = require('https');
-const { addClient, removeClient } = require('../socket/WebSocket.js'); // Adjust the path as necessary
+const { addClient, removeClient } = require('../socket/WebSocket.js');
 
 const wsdlPath = path.join(__dirname, 'user-service.wsdl');
 const { spawn } = require("child_process");
