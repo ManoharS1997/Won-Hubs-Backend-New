@@ -5,10 +5,6 @@ const ExternalUserRegistrationformFieldsData = require('../../shared/forms/Exter
 const BecomePartnerFormFields = require('../../shared/forms/BecomePartnerForm')
 const { DepartmentsData } = require('../../shared/forms/DesignForms')
 const IconsList = require('../../shared/IconsList');
-const GroupFormFields=require('../../shared/forms/AddGroupform')
-const AddCompanyFields = require("../../shared/forms/AddCompany")
-const AddLocationFields = require("../../shared/forms/AddLocation")
-const AddDepartmentFields = require("../../shared/forms/AddDepartment")
 
 // const DepartmentData = require('../../shared/forms/DesignForms')
 // const ConnectionFormsFields = require("../../shared/data/connectionFormsData")
@@ -62,27 +58,9 @@ const getConnectionFormsFields = async (req, res, next) => {
   }
 }
 
-const returnFormFieldFunction=(tablename)=>{
-  switch(tablename){
-    case 'user':
-      return AddUserFormFields
-    case 'groups' :
-      return  GroupFormFields
-    case 'company':
-      return AddCompanyFields
-    case 'location' :
-      return AddLocationFields
-    case 'department' :
-      return AddDepartmentFields
-  }
-}
-
 const getUserFormFields = async (req, res, next) => {
-  console.log("Triggering heree")
   try {
-    console.log(req.params,"params Here ")
-    const data=returnFormFieldFunction(req?.params?.formName)
-    res.status(200).json({ success: true, data: data });
+    res.status(200).json({ success: true, data: AddUserFormFields });
   } catch (err) {
     console.log('error fetching AddUserFormFields', err)
     res.status(500).send({ success: false, error: err });

@@ -83,7 +83,7 @@ const testAnyWebhook = async (req, res) => {
 }
 
 const verifyWebhook = async (req, res) => {
-  // console.log("connected clients:", connectedClients);
+  console.log("connected clients:", connectedClients);
 
   const challenge = req.body; // Look into query params!
 
