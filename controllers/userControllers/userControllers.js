@@ -483,11 +483,130 @@ const getUserDashboards = async (req, res) => {
   }
 }
 
+// 🟢 Create a new user
+const createUser = async (req, res) => {
+  const userData = req.body;
+  console.log("Triggering inside createUser", userData);
+
+  try {
+    const [results] = await db.query(
+      `INSERT INTO users (
+        active, department, email, first_name, last_name, location, 
+        phone_no, reset_password, time_zone, title, user_type
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        `${userData.active}` || null,
+        userData.department || null,
+        userData.email,
+        userData.firstName,
+        userData.lastName,
+        userData.location || null,
+        userData.phoneNo || null,
+        `${userData.resetPassword}` || null,
+        userData.timeZone || null,
+        userData.title || null,
+        userData.userType || null,
+      ]
+    );
+
+    res.json({ success: true, userId: results.insertId });
+  } catch (error) {
+    console.error('Error inserting user:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+// 🟡 Update user details
+const updateUser = async (req, res) => {
+  const userId = req.params.userId;
+  const updatedUserData = req.body;
+
+  try {
+    const updateQuery = `
+      UPDATE users SET 
+        active = ?, 
+        department = ?, 
+        email = ?, 
+        first_name = ?, 
+        last_name = ?, 
+        location = ?, 
+        phone_no = ?, 
+        reset_password = ?,  
+        time_zone = ?, 
+        title = ?,
+        user_type = ?
+      WHERE id = ?
+    `;
+
+    const values = [
+      updatedUserData.active || null,
+      updatedUserData.department || null,
+      updatedUserData.email || null,
+      updatedUserData.firstName || null,
+      updatedUserData.lastName || null,
+      updatedUserData.location || null,
+      updatedUserData.phoneNo || null,
+      updatedUserData.resetPassword || null,
+      updatedUserData.timeZone || null,
+      updatedUserData.title || null,
+      updatedUserData.userType || null,
+      userId,
+    ];
+
+    await db.query(updateQuery, values);
+    res.json({ success: true, userId });
+  } catch (error) {
+    console.error('Error updating user:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+// 🔵 Get user by ID
+const getUserById = async (req, res) => {
+  const userId = req.params.userId;
+
+  try {
+    const [results] = await db.query('SELECT * FROM users WHERE id = ?', [userId]);
+
+    if (results.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({ user: results[0] });
+  } catch (error) {
+    console.error('Error fetching user details:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+// 🔴 Delete user
+const deleteUser = async (req, res) => {
+  const userId = req.params.userId;
+
+  try {
+    const [results] = await db.query('DELETE FROM users WHERE id = ?', [userId]);
+
+    if (results.affectedRows > 0) {
+      res.json({ success: true, message: 'User deleted successfully' });
+    } else {
+      res.status(404).json({ error: 'User not found' });
+    }
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+
 
 module.exports = {
   getOrgUsers,
   createExternalUser,
   sendExternalRegistrationMail,
   creteOrganizationUser,
-  getUserDashboards
+  getUserDashboards,
+  createUser,
+  updateUser,
+  getUserById,
+  deleteUser
 };

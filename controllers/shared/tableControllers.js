@@ -1,6 +1,7 @@
 const { db } = require("../../config/DB-connection");
 const decodeAccessToken = require('../../utils/auth/DecodeAccessToken')
 const { getOrganizationIdWithUserId } = require("../../helpers/findOrgId");
+const { organization } = require("../../shared/IconsList");
 
 async function getColumnNamesWithTypes(tableName, callback) {
   const query = `
@@ -24,11 +25,13 @@ async function getColumnNamesWithTypes(tableName, callback) {
 const getTableData = async (req, res) => {
   try {
     const tableName = req.params.tableName;
+    // console.log(tableName,"table name")
     if (!tableName) {
       return res.status(400).json({ success: false, error: 'Table name is required' });
     }
     const { id } = decodeAccessToken(req.headers.authorization);
     const organizationId = await getOrganizationIdWithUserId(id);
+    // console.log(organizationId,"OrgId")
     const query = tableName === 'users' ?
       `SELECT * FROM ${tableName} WHERE organization_id = ?` :
       (tableName === 'table_selected_columns' || tableName === 'apps' || tableName === 'reports') ?
@@ -36,10 +39,12 @@ const getTableData = async (req, res) => {
         `SELECT * FROM ${tableName} WHERE org_id = ?`
     // console.log('Query:', query, 'Params:', [userId, organizationId]);
     const [results] = await db.execute(query, [organizationId]);
+    // console.log(results,"Heree")
 
     // if (results.length === 0) {
     //   return res.status(404).json({ error: 'Table not found' })
     // }
+    // console.log(results,"Here .,")
 
     const tableData = results
     res.status(200).json({ success: true, [tableName]: tableData })
@@ -112,15 +117,16 @@ const getAnyRecorddata = async (req, res) => {
     const query = `SELECT * FROM wonhubs.${tableName} WHERE id=${recordId}`
 
     const [results] = await db.query(query)
+    // console.log(results, "record data result in backend"  )
     if (results.length > 0) {
       // console.error(`error getting the record details:`)
       return res.status(200).json({ success: true, data: results })
     }
     return res.status(500).json({ success: false, message: 'Internal Server Error' })
 
-    if (eventData) {
-      // createEvent({ ...eventData, title: 'Record data fetched' })
-    }
+    // if (eventData) {
+    //   // createEvent({ ...eventData, title: 'Record data fetched' })
+    // }
 
   } catch (err) {
     console.error(`error getting the record details: ${err}`)

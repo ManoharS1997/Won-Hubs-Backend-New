@@ -68,7 +68,7 @@ const readMails = async (req, res) => {
     });
 
     const emails = await Promise.all(emailPromises);
-    console.log('read mails: ', emails.length, new Date())
+    // console.log('read mails: ', emails.length, new Date())
 
     res.json(emails);
   } catch (error) {
@@ -227,7 +227,7 @@ const sendRegistrationEmail = async (req, res) => {
       if (error) {
         return console.log('Error sending email:', error);
       }
-      console.log('Email sent:', info.response);
+      // console.log('Email sent:', info.response);
     });
     res.status(200).send({ message: 'Registration email sent successfully' });
   } catch (error) {
@@ -250,7 +250,7 @@ const sendEmailToAnyone = async (req, res) => {
       if (error) {
         return console.log('Error sending email:', error);
       }
-      console.log('Email sent:', info.response);
+      // console.log('Email sent:', info.response);
     });
     res.status(200).send({ message: 'Email sent successfully' });
   } catch (error) {
@@ -391,7 +391,7 @@ const recieveDemoRequest = async (req, res) => {
       if (error) {
         return console.log('Error sending email:', error);
       }
-      console.log('Email sent:', info.response);
+      // console.log('Email sent:', info.response);
     });
     res.status(200).send({ message: 'Email sent successfully' });
   } catch (error) {

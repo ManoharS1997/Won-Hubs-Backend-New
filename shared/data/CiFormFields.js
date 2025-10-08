@@ -80,6 +80,7 @@ const defaultCIFormFields = {
       placeholder: "Select Group",
       customStyles: {},
       isMandatory: false,
+      iconName:'HiUserGroup',
       api_data: {
         url: `${apiUrl}/api/groups/org-groups`,
         includeAccessToken: true,
@@ -495,6 +496,7 @@ const defaultCIFormFields = {
       placeholder: "Select Location",
       customStyles: {},
       isMandatory: false,
+      iconName:'SlLocationPin',
       api_data: {
         url: `${apiUrl}/api/locations/org-locations`,
         includeAccessToken: true,
@@ -1095,6 +1097,7 @@ const defaultCIFormFields = {
       placeholder: "Select Group",
       customStyles: {},
       isMandatory: false,
+      iconName:'HiUserGroup',
       api_data: {
         url: `${apiUrl}/api/groups/org-groups`,
         includeAccessToken: true,
@@ -1114,6 +1117,7 @@ const defaultCIFormFields = {
       placeholder: "Select Location",
       customStyles: {},
       isMandatory: false,
+      iconName:'SlLocationPin',
       api_data: {
         url: `${apiUrl}/api/locations/org-locations`,
         includeAccessToken: true,
