@@ -130,7 +130,6 @@ const updateNotification = async (req, res) => {
   }
 };
 
-// ✅ Get Notification by ID
 const getNotificationById = async (req, res) => {
  
 
