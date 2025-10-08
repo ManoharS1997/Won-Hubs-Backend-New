@@ -4350,7 +4350,6 @@ app.delete("/approvals/delete/:approvalId", (req, res) => {
       return res.status(500).json({ error: "Internal server error" });
     }
 
-    // check if any rows are affected (record deleted successfully)
     if (results.affectedRows > 0) {
       return res.json({
         success: true,
