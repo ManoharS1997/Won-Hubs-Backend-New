@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const FormDesigner = require("../../config/mongoDb");
+const FormDesigner = require("../../model/mongoDb");
 
 const handleError = (res, error, defaultStatus = 500) => {
   if (error instanceof mongoose.Error.ValidationError) {
