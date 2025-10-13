@@ -39,7 +39,7 @@ const createModule = async (req, res) => {
 
 const getModules = async (_req, res) => {
   try {
-    const modules = await FormDesigner.find();
+    const modules = await FormDesigner.find().sort({ _id: -1 });
     res.json({ success: true, data: modules });
   } catch (error) {
     handleError(res, error);
