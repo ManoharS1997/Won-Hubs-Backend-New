@@ -93,7 +93,7 @@ const login = async (req, res) => {
 
   try {
     const sql = `
-      SELECT id, username, password, mfa_enabled, login_count, mfa_type, instance_id
+      SELECT id, username, password, mfa_enabled, login_count, mfa_type, instance_id, category, subcategory,view, department
       FROM wonhubs.users
       WHERE username = ?
     `;
@@ -104,6 +104,7 @@ const login = async (req, res) => {
     }
 
     const user = results[0];
+    // console.log(user,"User,,.")
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid credentials' });
@@ -129,7 +130,11 @@ const login = async (req, res) => {
         mfa_enabled: user.mfa_enabled,
         mfa_type: user.mfa_type,
         login_count: user.login_count,
-        instanceId: user.instance_id
+        instanceId: user.instance_id,
+        category:user?.category||"category",
+        subcategory:user.subcategory,
+        view:user.view,
+        department:user.department,
       },
     });
 

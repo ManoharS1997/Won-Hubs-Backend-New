@@ -131,6 +131,73 @@ const AddUserFormFields = [
     customStyles: {},
     isMandatory: false,
   },
+  {
+    type: "dropdown",
+    name: "category",
+    label: "Category",
+    contentType: "string",
+    placeholder: "Select Category",
+    customStyles: {},
+    isMandatory: true,
+    iconName: IconstList.department,
+    options: [
+      { value: "software", label: "Software" },
+      { value: "hardware", label: "Hardware" },
+      { value: "ui/ux", label: "ui/ux" },
+      { value: "graphic", label: "graphic" },
+
+    ],
+    // api_data: {
+    //   url: `${apiUrl}/api/department/org-departments`,
+    //   includeAccessToken: true,
+    //   label: ["department_name"],
+    //   value: "id",
+    //   options: {
+    //     method: "GET",
+    //     headers: { "Content-Type": "application/json" },
+    //   },
+    // }
+  },
+  {
+    type: "dropdown",
+    name: "subcategory",
+    label: "Sub Category",
+    contentType: "string",
+    placeholder: "Select Sub Category",
+    customStyles: {},
+    isMandatory: true,
+    iconName: IconstList.department,
+    options: [
+      { value: "frontend", label: "Frontend" },
+      { value: "backend", label: "Backend" },
+      { value: "devops",
+         label: "devops" },
+      { value: "graphic", label: "graphic" },
+
+    ],
+  },
+{
+  type: "dropdown",
+    name: "view",
+    label: "Views",
+    contentType: "string",
+    placeholder: "Select Views",
+    customStyles: {},
+    isMandatory: true,
+    iconName: IconstList.department,
+    options: [
+      { value: "frontend", label: "Super Admin" },
+      { value: "backend", label: "Admin" },
+      { value: "designer admin",
+         label: "Designer Admin" },
+      { value: "agent", label: "Agent" },
+       { value: "internal user", label: "Internal User" },
+       { value: "external user", label: "External User"},
+
+
+    ],
+}
+
 ]
 
 module.exports = AddUserFormFields

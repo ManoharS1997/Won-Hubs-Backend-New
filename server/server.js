@@ -171,7 +171,7 @@ app.use('/core-transactions', CoreTransactionRoutes)
 app.use('AdminPortalForm', AdminPlatformroutes)
 app.use('/designs', DesignRoutes)// check here we had 
 app.use('/feedback', FeedbackRoutes)
-app.use('/templates', TemplateRoutes)
+app.use('/template', TemplateRoutes)
 app.use('/ci_transitions', CITransitionRoutes)
 app.use('/documents', documentRoutes)
 app.use('/service-mapping', ServiceMappingRoutes)
