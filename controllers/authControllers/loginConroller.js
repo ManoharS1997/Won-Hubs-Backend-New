@@ -93,7 +93,7 @@ const login = async (req, res) => {
 
   try {
     const sql = `
-      SELECT id, username, password, mfa_enabled, login_count, mfa_type, instance_id
+      SELECT id, username, password, mfa_enabled, login_count, mfa_type, instance_id, category, subcategory, view, department
       FROM wonhubs.users
       WHERE username = ?
     `;
