@@ -129,7 +129,11 @@ const login = async (req, res) => {
         mfa_enabled: user.mfa_enabled,
         mfa_type: user.mfa_type,
         login_count: user.login_count,
-        instanceId: user.instance_id
+        instanceId: user.instance_id,
+        category:user?.category||"category",
+        subcategory:user.subcategory,
+        view:user.view,
+        department:user.department,
       },
     });
 
