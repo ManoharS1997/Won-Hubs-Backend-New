@@ -64,7 +64,7 @@ const getModuleById = async (req, res) => {
 
 const getModuleByFields = async (req, res) => {
   try {
-    const { category, subcategory, view, department } = req.body;
+    const { category, subcategory, view, department, module } = req.body;
 
     if (!category || !subcategory || !view || !department) {
       return res.status(400).json({
@@ -75,14 +75,15 @@ const getModuleByFields = async (req, res) => {
       });
     }
 
-    const module = await FormDesigner.findOne({
+    const moduleData = await FormDesigner.findOne({
+      module,
       "selectedDepartments.department": department,
-      category: category,
+      category,
       "selectedDepartments.sub_category": subcategory,
       selectedViews: { $in: [view] },
     });
 
-    if (!module) {
+    if (!moduleData) {
       return res.status(404).json({
         success: false,
         error: "NotFound",
@@ -92,7 +93,7 @@ const getModuleByFields = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      data: module,
+      data: moduleData,
     });
   } catch (error) {
     handleError(res, error);
