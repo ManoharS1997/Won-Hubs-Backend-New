@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const FormDesigner = require("../../config/mongoDb");
+const FormDesigner = require("../../model/mongoDb");
 
 const handleError = (res, error, defaultStatus = 500) => {
   if (error instanceof mongoose.Error.ValidationError) {
@@ -39,7 +39,7 @@ const createModule = async (req, res) => {
 
 const getModules = async (_req, res) => {
   try {
-    const modules = await FormDesigner.find();
+    const modules = await FormDesigner.find().sort({ _id: -1 });
     res.json({ success: true, data: modules });
   } catch (error) {
     handleError(res, error);
