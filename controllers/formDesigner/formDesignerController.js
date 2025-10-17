@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const FormDesigner = require("../../config/mongoDb");
+const FormDesigner = require("../../model/mongoDb");
 
 const handleError = (res, error, defaultStatus = 500) => {
   if (error instanceof mongoose.Error.ValidationError) {
@@ -39,7 +39,7 @@ const createModule = async (req, res) => {
 
 const getModules = async (_req, res) => {
   try {
-    const modules = await FormDesigner.find();
+    const modules = await FormDesigner.find().sort({ _id: -1 });
     res.json({ success: true, data: modules });
   } catch (error) {
     handleError(res, error);
@@ -50,15 +50,51 @@ const getModuleById = async (req, res) => {
   try {
     const module = await FormDesigner.findById(req.params.id);
     if (!module) {
-      return res
-        .status(404)
-        .json({
-          success: false,
-          error: "NotFound",
-          message: "Module not found",
-        });
+      return res.status(404).json({
+        success: false,
+        error: "NotFound",
+        message: "Module not found",
+      });
     }
     res.json({ success: true, data: module });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+const getModuleByFields = async (req, res) => {
+  try {
+    const { category, subcategory, view, department, module } = req.body;
+
+    if (!category || !subcategory || !view || !department) {
+      return res.status(400).json({
+        success: false,
+        error: "BadRequest",
+        message:
+          "All fields (category, subcategory, view, department) are required.",
+      });
+    }
+
+    const moduleData = await FormDesigner.findOne({
+      module,
+      "selectedDepartments.department": department,
+      category,
+      "selectedDepartments.sub_category": subcategory,
+      selectedViews: { $in: [view] },
+    });
+
+    if (!moduleData) {
+      return res.status(404).json({
+        success: false,
+        error: "NotFound",
+        message: "No module found for the given filters.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: moduleData,
+    });
   } catch (error) {
     handleError(res, error);
   }
@@ -72,13 +108,11 @@ const updateModule = async (req, res) => {
       { new: true, runValidators: true }
     );
     if (!module) {
-      return res
-        .status(404)
-        .json({
-          success: false,
-          error: "NotFound",
-          message: "Module not found",
-        });
+      return res.status(404).json({
+        success: false,
+        error: "NotFound",
+        message: "Module not found",
+      });
     }
     res.json({ success: true, data: module });
   } catch (error) {
@@ -90,13 +124,11 @@ const deleteModule = async (req, res) => {
   try {
     const module = await FormDesigner.findByIdAndDelete(req.params.id);
     if (!module) {
-      return res
-        .status(404)
-        .json({
-          success: false,
-          error: "NotFound",
-          message: "Module not found",
-        });
+      return res.status(404).json({
+        success: false,
+        error: "NotFound",
+        message: "Module not found",
+      });
     }
     res.json({ success: true, message: "Module deleted successfully" });
   } catch (error) {
@@ -110,4 +142,5 @@ module.exports = {
   getModuleById,
   updateModule,
   deleteModule,
+  getModuleByFields,
 };
