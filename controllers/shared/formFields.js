@@ -78,7 +78,7 @@ const returnFormFieldFunction=(tablename)=>{
 }
 
 const getUserFormFields = async (req, res, next) => {
-  console.log("Triggering heree")
+  // console.log("Triggering heree")
   try {
     console.log(req.params,"params Here ")
     const data=returnFormFieldFunction(req?.params?.formName)

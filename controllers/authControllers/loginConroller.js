@@ -93,7 +93,7 @@ const login = async (req, res) => {
 
   try {
     const sql = `
-      SELECT id, username, password, mfa_enabled, login_count, mfa_type, instance_id, category, subcategory, view, department
+      SELECT id, username, password, mfa_enabled, login_count, mfa_type, instance_id, category, subcategory,view, department
       FROM wonhubs.users
       WHERE username = ?
     `;
@@ -104,6 +104,7 @@ const login = async (req, res) => {
     }
 
     const user = results[0];
+    console.log(user,"User,,.")
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid credentials' });
