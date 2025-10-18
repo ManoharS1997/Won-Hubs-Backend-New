@@ -6,6 +6,8 @@ const FormFieldSchema = new Schema({
   type: { type: String, required: true },
   label: { type: String, required: true },
   name: { type: String, required: true },
+  required: { type: Boolean, default: false },
+  
 });
 
 const FormButtonSchema = new Schema({
