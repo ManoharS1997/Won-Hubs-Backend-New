@@ -9,7 +9,7 @@ const {
 } = require("../../controllers/NotificationController/NotificationController");
 
 // ✅ Create notification
-router.post("/newNotifications", createNotification);
+router.post("/new", createNotification);
 
 // ✅ Update notification
 router.put("/update/:notificationId", updateNotification);

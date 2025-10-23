@@ -3,7 +3,7 @@ const router = express.Router();
 const { AddAlert, UpdateAlert, GetAlertById, DeleteAlert } = require("../../controllers/alertControllers/alertcontrollers");
 
 // Add new alert
-router.post("/newAlert", AddAlert);
+router.post("/new", AddAlert);
 
 // Update alert
 router.put("/update/:alertId", UpdateAlert);

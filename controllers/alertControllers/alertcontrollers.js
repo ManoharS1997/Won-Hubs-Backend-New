@@ -39,28 +39,33 @@ const AddAlert = async (req, res) => {
     const userId = decoded.id;
     const orgId = await getOrganizationIdWithUserId(userId);
     const nowMySQL = getCurrentMySQLDate();
+    console.log(req.body, "recordData here");
 
     const insertQuery = `
-      INSERT INTO alerts (title, type, short_description, active, created_by, created, org_id, formTitle)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO alerts (name, type, description, active, created_by, created, org_id, subject, content, from_address, to_address,cc)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const values = [
-      recordData.title?.value || null,
+      recordData.name?.value || null,
       recordData.type?.value || "desktop",
-      recordData.short_description || null,
+      recordData.description?.value || null,
       recordData.active ?? true,
       userId,
       nowMySQL,
       orgId,
-      recordData?.formTitle?.value || null,
+      recordData?.subject?.value || null,
+      recordData?.content || null,
+      recordData?.from?.value || null,
+      recordData?.to?.value || null,
+      recordData?.cc?.value || null,
     ];
 
     const [results] = await db.query(insertQuery, values);
 
     res.json({ success: true, recordId: results.insertId });
   } catch (err) {
-    console.error("❌ Error in AddAlert:", err);
+    console.log("❌ Error in AddAlert:", err);
     res.status(500).json({ error: "Internal Server Error", details: err.message });
   }
 };
@@ -77,41 +82,56 @@ const UpdateAlert = async (req, res) => {
     const decoded = jwt.verify(accessToken, process.env.ACCESS_TOKEN_SECRET);
     const userId = decoded.id;
     const orgId = await getOrganizationIdWithUserId(userId);
+    const nowMySQL = getCurrentMySQLDate();
 
     const updateQuery = `
       UPDATE alerts SET
-        title = ?,
+        name = ?,
         type = ?,
-        short_description = ?,
+        description = ?,
         active = ?,
         created_by = ?,
         created = ?,
-        org_id = ?
+        org_id = ?,
+        subject = ?,
+        content = ?,
+        from_address = ?,
+        to_address = ?,
+        cc = ?
       WHERE id = ?
     `;
 
     const values = [
-      updateData.title || null,
-      updateData.type || "desktop",
-      stripHtml(updateData.short_description) || null,
+      updateData.name?.value || null,
+      updateData.type?.value || "desktop",
+      updateData.description?.value || null,
       updateData.active ?? true,
-      updateData.createdBy || userId,
-      getCurrentMySQLDate(),
+      userId,
+      nowMySQL,
       orgId,
+      updateData?.subject?.value || null,
+      updateData?.content || null,
+      updateData?.from?.value || null,
+      updateData?.to?.value || null,
+      updateData?.cc?.value || null,
       recordId,
     ];
 
     const [results] = await db.query(updateQuery, values);
 
-    if (results.affectedRows === 0)
+    if (results.affectedRows === 0) {
       return res.status(404).json({ error: "Alert not found" });
+    }
 
     res.json({ success: true, recordId });
+    console.log("✅ Alert updated successfully");
   } catch (err) {
-    console.error("❌ Error in UpdateAlert:", err);
+    console.log("❌ Error in UpdateAlert:", err);
+    
     res.status(500).json({ error: "Internal Server Error", details: err.message });
   }
 };
+
 
 // ✅ Get alert by ID
 const GetAlertById = async (req, res) => {
