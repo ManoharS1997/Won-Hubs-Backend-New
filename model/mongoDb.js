@@ -1,4 +1,3 @@
-// models/Module.js
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
 
@@ -6,6 +5,8 @@ const FormFieldSchema = new Schema({
   type: { type: String, required: true },
   label: { type: String, required: true },
   name: { type: String, required: true },
+  required: { type: Boolean, default: false },
+  options: [{ type: String }],
 });
 
 const FormButtonSchema = new Schema({
@@ -16,12 +17,28 @@ const FormButtonSchema = new Schema({
   apiMethod: { type: String, required: false },
 });
 
+const ApiConfigSchema = new Schema({
+  apiUrl: { type: String, required: true },
+  method: { type: String, required: true },
+  description: { type: String, default: "" },
+});
+
+const TableColumnSchema = new Schema({
+  type: { type: String, required: true },
+  label: { type: String, required: true },
+  name: { type: String, required: true },
+  apiConfig: { type: ApiConfigSchema, required: false },
+});
+
 const TabSchema = new Schema({
   name: { type: String, required: true },
   type: { type: String, enum: ["form", "table"], required: true },
+
   fields: [FormFieldSchema],
   buttons: [FormButtonSchema],
-  tableCols: [FormFieldSchema],
+
+  tableCols: [TableColumnSchema],
+  apiConfig: { type: ApiConfigSchema, required: false },
 });
 
 const SelectedDepartmentSchema = new Schema({
@@ -39,12 +56,21 @@ const FormDesignerSchema = new Schema(
 
     formFields: [FormFieldSchema],
     formButtons: [FormButtonSchema],
+
     tabs: [TabSchema],
 
     selectedDepartments: SelectedDepartmentSchema,
-    selectedViews: [{ type: String }], // e.g. ['Super Admin', 'Admin']
+    selectedViews: [{ type: String }],
   },
   { timestamps: true }
 );
+
+ApiConfigSchema.methods.resolveUrl = function (params = {}) {
+  let resolvedUrl = this.apiUrl;
+  Object.entries(params).forEach(([key, value]) => {
+    resolvedUrl = resolvedUrl.replace(`:${key}`, value);
+  });
+  return resolvedUrl;
+};
 
 module.exports = mongoose.model("FormDesigner", FormDesignerSchema);
