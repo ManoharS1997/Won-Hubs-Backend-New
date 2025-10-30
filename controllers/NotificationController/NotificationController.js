@@ -4,9 +4,10 @@ const { getOrganizationIdWithUserId } = require("../../helpers/findOrgId");
 
 // ✅ Create Notification
 const createNotification = async (req, res) => {
-  console.log("Triggering here");
+  // console.log("Triggering here");
   try {
     const recordData = req.body;
+    // console.log(recordData, "recordData here");
 
     const accessToken = req.headers["authorization"]?.split(" ")[1];
     if (!accessToken) return res.status(401).json({ error: "Unauthorized" });
@@ -14,48 +15,54 @@ const createNotification = async (req, res) => {
     const decoded = jwt.verify(accessToken, process.env.ACCESS_TOKEN_SECRET);
     const userId = decoded.id;
     const orgId = await getOrganizationIdWithUserId(userId);
-
+    // console.log("Organization ID:", orgId);
     const insertQuery = `
       INSERT INTO notifications (
         name, active, to_address, cc, type, description, subject,
         email_body, created_by, who_will_receive, bulk_notification, sms_alert,
-        preview, created, updated, updated_by, org_id
+        preview, created, updated, updated_by, org_id, from
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?, ?) 
     `;
 
+    // ✅ Extract .value safely
+    const extract = (field) => (field && typeof field === "object" ? field.value : field);
+
     const values = [
-      recordData.name || null,
-      recordData.active ?? true,
-      recordData.toAddress || null,
-      recordData.cc || null,
-      recordData.type || "desktop",
-      recordData.description || null,
-      recordData.subject || null,
-      JSON.stringify(recordData.emailBody) || null,
+      extract(recordData.name),
+      extract(recordData.active) ?? true,
+      extract(recordData.to),
+      extract(recordData.cc),
+      extract(recordData.type) || "desktop",
+      extract(recordData.description),
+      extract(recordData.subject),
+      recordData.content || null,
       userId,
-      recordData.whoWillRecieve || null,
-      recordData.bulkNotification || null,
-      recordData.smsAlert || null,
-      recordData.preview || null,
+      extract(recordData.whoWillRecieve),
+      extract(recordData.bulkNotification),
+      extract(recordData.smsAlert),
+      extract(recordData.preview),
       userId,
       orgId || null,
+      extract(recordData.from) || null,
     ];
 
     const [results] = await db.query(insertQuery, values);
     console.log("✅ Notification created with ID:", results.insertId);
     return res.json({ success: true, recordId: results.insertId });
   } catch (err) {
-    console.log(err,"Error here")
     console.error("❌ Unexpected error:", err);
     return res.status(500).json({ error: "Unexpected Server Error" });
   }
 };
 
+
 // ✅ Update Notification
 const updateNotification = async (req, res) => {
   try {
     const recordData = req.body;
+    // console.log(req.paramns, "params Hereee" )
+    console.log(recordData, "recordData here");
     const recordId = req.params.notificationId;
 
     const accessToken = req.headers["authorization"]?.split(" ")[1];
@@ -64,6 +71,10 @@ const updateNotification = async (req, res) => {
     const decoded = jwt.verify(accessToken, process.env.ACCESS_TOKEN_SECRET);
     const userId = decoded.id;
     const orgId = await getOrganizationIdWithUserId(userId);
+
+    // ✅ Same extraction logic as createNotification
+    const extract = (field) =>
+      field && typeof field === "object" ? field.value : field;
 
     const updateQuery = `
       UPDATE notifications 
@@ -83,38 +94,41 @@ const updateNotification = async (req, res) => {
         preview = ?,
         updated = NOW(),
         updated_by = ?,
-        org_id = ?
+        org_id = ?,
       WHERE id = ?
     `;
 
+    // ✅ Use same structure/order as createNotification
     const values = [
-      recordData.name || null,
-      recordData.active ?? true,
-      recordData.toAddress || null,
-      recordData.cc || null,
-      recordData.type || "desktop",
-      recordData.description || null,
-      recordData.subject || null,
-      JSON.stringify(recordData.emailBody) || null,
+      extract(recordData.name),
+      extract(recordData.active) ?? true,
+      extract(recordData.to),
+      extract(recordData.cc),
+      extract(recordData.type) || "desktop",
+      extract(recordData.description),
+      extract(recordData.subject),
+      recordData.content || null,
       userId,
-      recordData.whoWillRecieve || null,
-      recordData.bulkNotification || null,
-      recordData.smsAlert || null,
-      recordData.preview || null,
+      extract(recordData.whoWillRecieve),
+      extract(recordData.bulkNotification),
+      extract(recordData.smsAlert),
+      extract(recordData.preview),
       userId,
       orgId || null,
       recordId,
+      // extract(recordData.from) || null
     ];
 
     const [results] = await db.query(updateQuery, values);
 
-    if (results.affectedRows === 0)
+    if (results.affectedRows === 0) {
       return res.status(404).json({ error: "Notification not found" });
+    }
+
     console.log("✅ Notification updated with ID:", recordId);
     return res.json({ success: true, recordId });
   } catch (err) {
-    console.log(err,"Error here")
-    console.error("❌ Error processing update request:", err);
+    console.error("❌ Error updating notification:", err);
     return res.status(500).json({ error: "Unexpected Server Error" });
   }
 };
@@ -122,7 +136,7 @@ const updateNotification = async (req, res) => {
 // ✅ Get Notification by ID
 const getNotificationById = async (req, res) => {
   try {
-    console.log(req.params,"params Hereee")
+    console.log(req.params, "params Hereee")
     const recordId = req.params.notificationId;
     const query = `SELECT * FROM notifications WHERE id = ?`;
 

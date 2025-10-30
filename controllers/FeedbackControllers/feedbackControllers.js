@@ -26,6 +26,8 @@ const getCurrentMySQLDate = () => {
 const createFeedback = async (req, res) => {
   try {
     const recordData = req.body;
+    // console.log("Received feedback data:", recordData);
+
     const accessToken = req.headers["authorization"]?.split(" ")[1];
     if (!accessToken) {
       return res.status(401).json({ error: "Unauthorized: No access token provided" });
@@ -43,38 +45,44 @@ const createFeedback = async (req, res) => {
     const orgId = await getOrganizationIdWithUserId(userId);
     const nowMySQL = getCurrentMySQLDate();
 
+    const { content } = recordData;
+    const { questions, imageFile } = content || {};
+
     const insertQuery = `
       INSERT INTO feedback (
-        title, short_description, date_of_submission,
-        template_image_name, template_image, sections,
-        active, responses, created, updated,
-        created_by, updated_by, org_id, type
+        name, description, date_of_submission,
+        template_image_name, template_image,
+        active, created, updated,
+        created_by, updated_by, org_id,
+        type, from_address, to_address, cc, subject, questions, image_file
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const values = [
-      recordData.title?.value || null,
-      stripHtml(recordData.description?.value) ||
-        stripHtml(recordData.shortDescription) ||
-        stripHtml(recordData.sections?.[0]?.sectionDescription) ||
-        null,
-      nowMySQL,
-      recordData.title?.value || null,
+      recordData.name?.value || null,
+      stripHtml(recordData.description?.value) || null,
+      nowMySQL, // ✅ Correct date of submission
+      recordData.imageName || null, // ✅ template_image_name
       recordData.image || null,
-      JSON.stringify(recordData.sections || []),
       recordData.active ?? true,
-      JSON.stringify(recordData.responses || []),
-      nowMySQL,
-      nowMySQL,
-      userId,
-      userId,
+      nowMySQL, // created
+      nowMySQL, // updated
+      userId, // created_by
+      userId, // updated_by
       recordData.orgId || orgId || "001",
       recordData.type?.value || recordData.type || "Desktop",
+      recordData.from?.value || recordData.from || null,
+      recordData.to?.value || recordData.to || null,
+      recordData.cc?.value || recordData.cc || null,
+      recordData.subject?.value || recordData.subject || null,
+      questions ? JSON.stringify(questions) : null,
+      imageFile || null,
     ];
 
     const [results] = await db.query(insertQuery, values);
     console.log("✅ Feedback record inserted successfully");
+
     res.status(201).json({ success: true, recordId: results.insertId });
   } catch (err) {
     console.error("Error handling /feedback/newFeedback:", err);
@@ -84,40 +92,92 @@ const createFeedback = async (req, res) => {
 
 // ✅ Update feedback record
 const updateFeedback = async (req, res) => {
-  const recordData = req.body;
-  const { feedbackId } = req.params;
-
+  console.log("Triggering Heree");
   try {
+    const recordData = req.body;
+    const { feedbackId } = req.params;
+    // console.log("Received update data:", recordData);
+
+    if (!feedbackId) {
+      return res.status(400).json({ error: "Missing feedbackId in params" });
+    }
+
+    const accessToken = req.headers["authorization"]?.split(" ")[1];
+    if (!accessToken) {
+      return res.status(401).json({ error: "Unauthorized: No access token provided" });
+    }
+
+    // Verify JWT
+    let decoded;
+    try {
+      decoded = jwt.verify(accessToken, process.env.ACCESS_TOKEN_SECRET);
+    } catch (err) {
+      return res.status(401).json({ error: "Unauthorized: Invalid token" });
+    }
+
+    const userId = decoded.id;
+    const orgId = await getOrganizationIdWithUserId(userId);
+    const nowMySQL = getCurrentMySQLDate();
+
+    // Extract feedback content safely
+    const { content } = recordData || {};
+    const { questions, imageFile } = content || {};
+
+    // Ensure optional fields are safely defaulted
+    const imageName = recordData?.imageName || null;
+    const imageData = recordData?.image || null;
+
     const updateQuery = `
       UPDATE feedback SET
-        title = ?, short_description = ?, date_of_submission = ?, 
-        feedback_on = ?, active = ?, preview = ?, created = ?, 
-        updated = ?, created_by = ?, updated_by = ?
+        name = ?, 
+        description = ?, 
+        date_of_submission = ?,
+        template_image_name = ?, 
+        template_image = ?,
+        active = ?, 
+        updated = ?, 
+        updated_by = ?, 
+        org_id = ?,
+        type = ?, 
+        from_address = ?, 
+        to_address = ?, 
+        cc = ?, 
+        subject = ?, 
+        questions = ?, 
+        image_file = ?
       WHERE id = ?
     `;
 
     const values = [
-      recordData.title || null,
-      recordData.shortDescription || null,
-      recordData.dateOfSubmission || null,
-      recordData.feedbackOn || null,
-      recordData.active ?? true,
-      recordData.preview || null,
-      recordData.created || null,
-      recordData.updated || getCurrentMySQLDate(),
-      recordData.createdBy || null,
-      recordData.updatedBy || null,
+      recordData?.name?.value || null,
+      stripHtml(recordData?.description?.value) || null,
+      nowMySQL, // date_of_submission
+      imageName,
+      imageData,
+      recordData?.active ?? true,
+      nowMySQL, // updated timestamp
+      userId,
+      recordData?.orgId || orgId || "001",
+      recordData?.type?.value || recordData?.type || "Desktop",
+      recordData?.from?.value || recordData?.from || null,
+      recordData?.to?.value || recordData?.to || null,
+      recordData?.cc?.value || recordData?.cc || null,
+      recordData?.subject?.value || recordData?.subject || null,
+      questions ? JSON.stringify(questions) : null,
+      imageFile || null,
       feedbackId,
     ];
 
     await db.query(updateQuery, values);
-    console.log("Feedback updated successfully");
-    res.json({ success: true, feedbackId });
-  } catch (error) {
-    console.error("Error while updating the feedback record:", error);
-    res.status(500).json({ error: "Feedback internal server error" });
+
+    console.log("✅ Feedback updated successfully");
+    return res.json({ success: true, feedbackId });
+  } catch (err) {
+    console.error("❌ Error updating feedback:", err);
+    return res.status(500).json({ error: "Server error", details: err.message });
   }
 };
+
 
 // ✅ Get feedback by ID
 const getFeedbackById = async (req, res) => {
