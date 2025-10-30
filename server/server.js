@@ -211,7 +211,7 @@ app.use((err, req, res, next) => {
 // };
 
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> EMIT ALERT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-// emit the alert
+
 function EmitAlert(alert) {
   console.log("Alert triggered:", alert); // Log the alert
 
