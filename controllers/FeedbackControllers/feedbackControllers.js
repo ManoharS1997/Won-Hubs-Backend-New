@@ -1,6 +1,8 @@
 const jwt = require("jsonwebtoken");
 const { db } = require("../../config/DB-connection");
 // const { getOrganizationIdWithUserId } = require("../utils/authUtils"); // adjust path if needed
+const { getOrganizationIdWithUserId } = require("../../helpers/findOrgId");
+
 
 // 🔹 Helper to remove HTML tags
 const stripHtml = (str) => {

@@ -1,14 +1,14 @@
-const db = require("../../config/DB-connection");
+const { db } = require("../../config/DB-connection");
 const jwt = require("jsonwebtoken");
-// const { getOrganizationIdWithUserId } = require("../utils/helpers");
+const { getOrganizationIdWithUserId } = require("../../helpers/findOrgId");
 
-// Helper to strip HTML
+// Helper: Strip HTML
 const stripHtml = (str) => {
   if (!str) return null;
   return str.replace(/<[^>]*>/g, "").trim();
 };
 
-// Helper: get current date in MySQL format
+// Helper: Get current date in MySQL format
 const getCurrentMySQLDate = () => {
   const d = new Date();
   const Y = d.getFullYear();
@@ -20,11 +20,12 @@ const getCurrentMySQLDate = () => {
   return `${Y}-${M}-${D} ${h}:${m}:${s}`;
 };
 
-// ✅ CREATE Template
+
 const createTemplate = async (req, res) => {
   try {
     const recordData = req.body;
     const accessToken = req.headers["authorization"]?.split(" ")[1];
+
     if (!accessToken) {
       return res.status(401).json({ error: "Unauthorized: No access token provided" });
     }
@@ -40,24 +41,27 @@ const createTemplate = async (req, res) => {
     const orgId = await getOrganizationIdWithUserId(userId);
     const nowMySQL = getCurrentMySQLDate();
 
-    const insertQuery = `
-      INSERT INTO templates (
-        name, 
-        active, 
-        type,
-        style, 
-        short_description, 
-        who_will_receive, 
-        created_by, 
-        sms_alert, 
-        preview, 
-        created,
-        updated,
-        content,
-        org_id
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
+   const insertQuery = `
+  INSERT INTO templates (
+    name,
+    active,
+    type,
+    style,
+    short_description,
+    who_will_receive,
+    created_by,
+    sms_alert,
+    preview,
+    created,
+    updated,
+    content,
+    org_id,
+    subject,
+    cc
+  )
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`;
+
 
     const values = [
       recordData.title?.value || null,
@@ -73,62 +77,61 @@ const createTemplate = async (req, res) => {
       nowMySQL,
       JSON.stringify(recordData.content || []),
       recordData.orgId || orgId || "001",
+      recordData.from?.value || null,
+      recordData.subject?.value || null,
+      recordData.cc?.value || null,
     ];
 
-    db.query(insertQuery, values, (error, results) => {
-      if (error) {
-        console.error("Error inserting template:", error);
-        return res.status(500).json({ error: "Template Internal Server Error" });
-      }
-      console.log("✅ Template inserted successfully");
-      res.status(201).json({ success: true, recordId: results.insertId });
-    });
+    const [results] = await db.query(insertQuery, values);
+    console.log("✅ Template inserted successfully:", results);
+
+    res.status(201).json({ success: true, recordId: results.insertId });
   } catch (err) {
-    console.error("Error in createTemplate:", err);
-    res.status(500).json({ error: "Server Error", details: err.message });
+    console.error("❌ Error in createTemplate:", err);
+    res.status(500).json({ error: "Template Internal Server Error", details: err.message });
   }
 };
 
+//
 // ✅ UPDATE Template
-const updateTemplate = (req, res) => {
-  const recordData = req.body;
-  const recordId = req.params.templateId;
+//
+const updateTemplate = async (req, res) => {
+  try {
+    const recordData = req.body;
+    const recordId = req.params.templateId;
+    const nowMySQL = getCurrentMySQLDate();
 
-  const nowMySQL = getCurrentMySQLDate();
-  const updateQuery = `
-    UPDATE templates SET 
-      name = ?, 
-      active = ?, 
-      type = ?, 
-      style = ?, 
-      short_description = ?, 
-      who_will_receive = ?, 
-      created_by = ?, 
-      sms_alert = ?, 
-      preview = ?, 
-      updated = ?
-    WHERE id = ?
-  `;
+    const updateQuery = `
+      UPDATE templates SET 
+        name = ?, 
+        active = ?, 
+        type = ?, 
+        style = ?, 
+        short_description = ?, 
+        who_will_receive = ?, 
+        created_by = ?, 
+        sms_alert = ?, 
+        preview = ?, 
+        updated = ?
+      WHERE id = ?
+    `;
 
-  const values = [
-    recordData.name || null,
-    recordData.active ?? true,
-    recordData.type || null,
-    recordData.style || null,
-    recordData.shortDescription || null,
-    recordData.whoWillReceive || null,
-    recordData.createdBy || null,
-    recordData.smsAlert || null,
-    recordData.preview || null,
-    nowMySQL,
-    recordId,
-  ];
+    const values = [
+      recordData.name || null,
+      recordData.active ?? true,
+      recordData.type || null,
+      recordData.style || null,
+      recordData.shortDescription || null,
+      recordData.whoWillReceive || null,
+      recordData.createdBy || null,
+      recordData.smsAlert || null,
+      recordData.preview || null,
+      nowMySQL,
+      recordId,
+    ];
 
-  db.query(updateQuery, values, (error, results) => {
-    if (error) {
-      console.error("Error updating template record:", error);
-      return res.status(500).json({ error: "Template internal server error" });
-    }
+    const [results] = await db.query(updateQuery, values);
+    console.log("🟡 Update results:", results);
 
     if (results.affectedRows > 0) {
       console.log("✅ Template updated successfully");
@@ -136,45 +139,54 @@ const updateTemplate = (req, res) => {
     } else {
       res.status(404).json({ error: "Template not found" });
     }
-  });
+  } catch (err) {
+    console.error("❌ Error updating template:", err);
+    res.status(500).json({ error: "Template Internal Server Error", details: err.message });
+  }
 };
 
+//
 // ✅ GET Template by ID
-const getTemplateById = (req, res) => {
-  const recordId = req.params.templateId;
-  const query = `SELECT * FROM templates WHERE id = ?`;
+//
+const getTemplateById = async (req, res) => {
+  try {
+    const recordId = req.params.templateId;
+    const query = `SELECT * FROM templates WHERE id = ?`;
 
-  db.query(query, [recordId], (error, results) => {
-    if (error) {
-      console.error("Error fetching template details:", error);
-      return res.status(500).json({ error: "Template internal server error" });
-    }
+    const [results] = await db.query(query, [recordId]);
+    console.log("📄 Query results:", results);
 
-    if (results.length === 0) {
+    if (!results.length) {
       return res.status(404).json({ error: "Template not found" });
     }
 
-    res.json({ record: results[0] });
-  });
+    res.json({ success: true, record: results[0] });
+  } catch (err) {
+    console.error("❌ Error fetching template:", err);
+    res.status(500).json({ error: "Template Internal Server Error", details: err.message });
+  }
 };
 
+//
 // ✅ DELETE Template
-const deleteTemplate = (req, res) => {
-  const recordId = req.params.templateId;
-  const deleteQuery = `DELETE FROM templates WHERE id = ?`;
+//
+const deleteTemplate = async (req, res) => {
+  try {
+    const recordId = req.params.templateId;
+    const deleteQuery = `DELETE FROM templates WHERE id = ?`;
 
-  db.query(deleteQuery, [recordId], (error, results) => {
-    if (error) {
-      console.error("Error deleting template:", error);
-      return res.status(500).json({ error: "Internal server error" });
-    }
+    const [results] = await db.query(deleteQuery, [recordId]);
+    console.log("🗑️ Delete results:", results);
 
     if (results.affectedRows > 0) {
       res.json({ success: true, message: "Record deleted successfully" });
     } else {
       res.status(404).json({ error: "Record not found" });
     }
-  });
+  } catch (err) {
+    console.error("❌ Error deleting template:", err);
+    res.status(500).json({ error: "Template Internal Server Error", details: err.message });
+  }
 };
 
 module.exports = {

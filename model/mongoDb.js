@@ -53,7 +53,7 @@ const FormDesignerSchema = new Schema(
     widgetname: { type: String, default: "" },
     departmentName: { type: String, default: "" },
     category: { type: String, default: "" },
-
+    column:{type:Boolean,default:false},
     formFields: [FormFieldSchema],
     formButtons: [FormButtonSchema],
 

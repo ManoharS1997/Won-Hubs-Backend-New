@@ -1,13 +1,22 @@
-const { db, pool, connection } = require("../../config/DB-connection");
+const { db } = require("../../config/DB-connection");
 const jwt = require("jsonwebtoken");
 const { getOrganizationIdWithUserId } = require("../../helpers/findOrgId");
-const stripHtml = (str) => {
-  if (!str) return null;
-  return str.replace(/<[^>]*>/g, '').trim();
-};
-// make sure to install this if used
 
-// Helper function to get MySQL formatted date
+// ✅ Helper: remove HTML tags
+const stripHtml = (input) => {
+  if (!input) return null;
+
+  // Handle case where input might be an object like { value: "..." }
+  const str = typeof input === "object" && input.value ? input.value : input;
+
+  // Ensure we only call replace on actual strings
+  return typeof str === "string"
+    ? str.replace(/<[^>]*>/g, "").trim()
+    : null;
+};
+
+
+// ✅ Helper: get MySQL-formatted current date
 const getCurrentMySQLDate = () => {
   const d = new Date();
   const Y = d.getFullYear();
@@ -21,16 +30,14 @@ const getCurrentMySQLDate = () => {
 
 // ✅ Add new alert
 const AddAlert = async (req, res) => {
-  const recordData = req.body;
-
   try {
+    const recordData = req.body;
     const accessToken = req.headers["authorization"]?.split(" ")[1];
     if (!accessToken) return res.status(401).json({ error: "Unauthorized" });
 
     const decoded = jwt.verify(accessToken, process.env.ACCESS_TOKEN_SECRET);
     const userId = decoded.id;
     const orgId = await getOrganizationIdWithUserId(userId);
-
     const nowMySQL = getCurrentMySQLDate();
 
     const insertQuery = `
@@ -41,7 +48,7 @@ const AddAlert = async (req, res) => {
     const values = [
       recordData.title?.value || null,
       recordData.type?.value || "desktop",
-      stripHtml(recordData.short_description) || null,
+      recordData.short_description || null,
       recordData.active ?? true,
       userId,
       nowMySQL,
@@ -49,25 +56,21 @@ const AddAlert = async (req, res) => {
       recordData?.formTitle?.value || null,
     ];
 
-    connection.query(insertQuery, values, (error, results) => {
-      if (error) {
-        console.error("Error inserting alert record: ", error);
-        return res.status(500).json({ error: "Alerts Internal Server Error", details: error.sqlMessage });
-      }
-      res.json({ success: true, recordId: results.insertId });
-    });
+    const [results] = await db.query(insertQuery, values);
+
+    res.json({ success: true, recordId: results.insertId });
   } catch (err) {
-    console.error("Error in AddAlert:", err);
-    res.status(401).json({ error: "Unauthorized or invalid token" });
+    console.error("❌ Error in AddAlert:", err);
+    res.status(500).json({ error: "Internal Server Error", details: err.message });
   }
 };
 
 // ✅ Update alert
 const UpdateAlert = async (req, res) => {
-  const recordId = req.params.alertId;
-  const updateData = req.body;
-
   try {
+    const recordId = req.params.alertId;
+    const updateData = req.body;
+
     const accessToken = req.headers["authorization"]?.split(" ")[1];
     if (!accessToken) return res.status(401).json({ error: "Unauthorized" });
 
@@ -93,54 +96,55 @@ const UpdateAlert = async (req, res) => {
       stripHtml(updateData.short_description) || null,
       updateData.active ?? true,
       updateData.createdBy || userId,
-      updateData.created || new Date(),
+      getCurrentMySQLDate(),
       orgId,
       recordId,
     ];
 
-    connection.query(updateQuery, values, (error) => {
-      if (error) {
-        console.error("Error updating alert record:", error);
-        return res.status(500).json({ error: "Alerts Internal Server Error", details: error.sqlMessage });
-      }
-      res.json({ success: true, recordId });
-    });
+    const [results] = await db.query(updateQuery, values);
+
+    if (results.affectedRows === 0)
+      return res.status(404).json({ error: "Alert not found" });
+
+    res.json({ success: true, recordId });
   } catch (err) {
-    console.error("Error in UpdateAlert:", err);
-    res.status(401).json({ error: "Unauthorized or invalid token" });
+    console.error("❌ Error in UpdateAlert:", err);
+    res.status(500).json({ error: "Internal Server Error", details: err.message });
   }
 };
 
 // ✅ Get alert by ID
-const GetAlertById = (req, res) => {
-  const recordId = req.params.alertId;
+const GetAlertById = async (req, res) => {
+  try {
+    const recordId = req.params.alertId;
 
-  const query = `SELECT * FROM alerts WHERE id = ?`;
-  connection.query(query, [recordId], (error, results) => {
-    if (error) {
-      console.error("Error fetching alert record:", error);
-      return res.status(500).json({ error: "Alerts Internal Server Error" });
-    }
-    if (results.length === 0) return res.status(404).json({ error: "Alert not found" });
+    const [results] = await db.query(`SELECT * FROM alerts WHERE id = ?`, [recordId]);
+
+    if (results.length === 0)
+      return res.status(404).json({ error: "Alert not found" });
 
     res.json({ record: results[0] });
-  });
+  } catch (err) {
+    console.error("❌ Error in GetAlertById:", err);
+    res.status(500).json({ error: "Internal Server Error", details: err.message });
+  }
 };
 
 // ✅ Delete alert
-const DeleteAlert = (req, res) => {
-  const recordId = req.params.alertId;
+const DeleteAlert = async (req, res) => {
+  try {
+    const recordId = req.params.alertId;
 
-  const deleteQuery = `DELETE FROM alerts WHERE id = ?`;
-  connection.query(deleteQuery, [recordId], (error, results) => {
-    if (error) {
-      console.error("Error deleting alert record:", error);
-      return res.status(500).json({ error: "Internal Server Error" });
-    }
-    if (results.affectedRows === 0) return res.status(404).json({ error: "Alert not found" });
+    const [results] = await db.query(`DELETE FROM alerts WHERE id = ?`, [recordId]);
+
+    if (results.affectedRows === 0)
+      return res.status(404).json({ error: "Alert not found" });
 
     res.json({ success: true, message: "Record deleted successfully" });
-  });
+  } catch (err) {
+    console.error("❌ Error in DeleteAlert:", err);
+    res.status(500).json({ error: "Internal Server Error", details: err.message });
+  }
 };
 
 module.exports = {

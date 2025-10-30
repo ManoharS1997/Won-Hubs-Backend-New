@@ -1,9 +1,10 @@
-const db = require("../../config/DB-connection");
+const { db } = require("../../config/DB-connection");
 const jwt = require("jsonwebtoken");
-// const { getOrganizationIdWithUserId } = require("../utils/helperFunctions");
+const { getOrganizationIdWithUserId } = require("../../helpers/findOrgId");
 
 // ✅ Create Notification
 const createNotification = async (req, res) => {
+  console.log("Triggering here");
   try {
     const recordData = req.body;
 
@@ -41,17 +42,12 @@ const createNotification = async (req, res) => {
       orgId || null,
     ];
 
-    db.query(insertQuery, values, (error, results) => {
-      if (error) {
-        console.error("❌ Error inserting notification record:", error);
-        return res.status(500).json({ error: "Notifications Internal Server Error" });
-      }
-
-      res.json({ success: true, recordId: results.insertId });
-    });
-
+    const [results] = await db.query(insertQuery, values);
+    console.log("✅ Notification created with ID:", results.insertId);
+    return res.json({ success: true, recordId: results.insertId });
   } catch (err) {
-    console.error("Unexpected error:", err);
+    console.log(err,"Error here")
+    console.error("❌ Unexpected error:", err);
     return res.status(500).json({ error: "Unexpected Server Error" });
   }
 };
@@ -100,67 +96,66 @@ const updateNotification = async (req, res) => {
       recordData.description || null,
       recordData.subject || null,
       JSON.stringify(recordData.emailBody) || null,
-      recordData.createdBy || null,
+      userId,
       recordData.whoWillRecieve || null,
       recordData.bulkNotification || null,
       recordData.smsAlert || null,
       recordData.preview || null,
-      recordData.updatedBy || null,
+      userId,
       orgId || null,
       recordId,
     ];
 
-    db.query(updateQuery, values, (error, results) => {
-      if (error) {
-        console.error("❌ Error updating notification record:", error);
-        return res.status(500).json({ error: "Notifications internal server error" });
-      }
+    const [results] = await db.query(updateQuery, values);
 
-      res.json({ success: true, recordId });
-    });
-
+    if (results.affectedRows === 0)
+      return res.status(404).json({ error: "Notification not found" });
+    console.log("✅ Notification updated with ID:", recordId);
+    return res.json({ success: true, recordId });
   } catch (err) {
+    console.log(err,"Error here")
     console.error("❌ Error processing update request:", err);
-    return res.status(401).json({ error: "Unauthorized or invalid request" });
+    return res.status(500).json({ error: "Unexpected Server Error" });
   }
 };
 
 // ✅ Get Notification by ID
-const getNotificationById = (req, res) => {
-  const recordId = req.params.notificationId;
+const getNotificationById = async (req, res) => {
+  try {
+    console.log(req.params,"params Hereee")
+    const recordId = req.params.notificationId;
+    const query = `SELECT * FROM notifications WHERE id = ?`;
 
-  const query = `SELECT * FROM notifications WHERE id = ?`;
+    const [results] = await db.query(query, [recordId]);
+    // console.log("✅ Fetched notification record:", results);
 
-  db.query(query, [recordId], (error, results) => {
-    if (error) {
-      console.error("❌ Error fetching notification record:", error);
-      return res.status(500).json({ error: "Notifications Internal server error" });
-    }
+    if (!results.length)
+      return res.status(404).json({ error: "Notification not found" });
 
-    if (!results.length) return res.status(404).json({ error: "Notification not found" });
-
-    res.json({ record: results[0] });
-  });
+    return res.json({ record: results[0] });
+  } catch (error) {
+    console.error("❌ Error fetching notification record:", error);
+    return res.status(500).json({ error: "Notifications Internal Server Error" });
+  }
 };
 
 // ✅ Delete Notification
-const deleteNotification = (req, res) => {
-  const recordId = req.params.notificationId;
+const deleteNotification = async (req, res) => {
+  try {
+    const recordId = req.params.notificationId;
+    const deleteQuery = `DELETE FROM notifications WHERE id = ?`;
 
-  const deleteQuery = `DELETE FROM notifications WHERE id = ?`;
-
-  db.query(deleteQuery, [recordId], (error, results) => {
-    if (error) {
-      console.error("❌ Error deleting notification record:", error);
-      return res.status(500).json({ error: "Internal server error" });
-    }
+    const [results] = await db.query(deleteQuery, [recordId]);
 
     if (results.affectedRows > 0) {
-      res.json({ success: true, message: "Record deleted successfully" });
+      return res.json({ success: true, message: "Record deleted successfully" });
     } else {
-      res.status(404).json({ error: "Record not found" });
+      return res.status(404).json({ error: "Record not found" });
     }
-  });
+  } catch (error) {
+    console.error("❌ Error deleting notification record:", error);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
 };
 
 module.exports = {

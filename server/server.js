@@ -163,29 +163,31 @@ app.use("/api/s3", s3Routes);
 app.use("/api/partners", partnerRoutes);
 app.use("/api", sharedRoutes);
 // Created Routes And Controllers
-app.use("/tickets", ticketRoutes);
-app.use("/roles", RoleRoutes);
-app.use("/alerts", AlertRoutes);
-app.use("/notifications", NotificationRoutes);
-app.use("/ticket", TicketRoutes);
-app.use("/flows", FlowRoutes);
-app.use("/connections", ConnectionsRoutes);
-app.use("/core-transactions", CoreTransactionRoutes);
-app.use("AdminPortalForm", AdminPlatformroutes);
-app.use("/designs", DesignRoutes); // check here we had
-app.use("/feedback", FeedbackRoutes);
-app.use("/templates", TemplateRoutes);
-app.use("/ci_transitions", CITransitionRoutes);
-app.use("/documents", documentRoutes);
-app.use("/service-mapping", ServiceMappingRoutes);
-app.use("/sla", SLARoutes);
-app.use("/tasks", TaskRoutes);
-app.use("/approvals", ApprovalRoutes);
-app.use("/users", UserRoutes);
-app.use("/company", CompanyRoutes);
-app.use("/groups", groupRoutes);
-app.use("/locations", locationsRoutes);
-app.use("/departments", departmentsRoutes);
+
+
+app.use("/tickets", ticketRoutes)
+app.use('/roles', RoleRoutes)
+app.use('/alerts', AlertRoutes)
+app.use('/notifications', NotificationRoutes)
+app.use('/ticket', TicketRoutes)
+app.use('/flows', FlowRoutes)
+app.use('/connections', ConnectionsRoutes)
+app.use('/core-transactions', CoreTransactionRoutes)
+app.use('AdminPortalForm', AdminPlatformroutes)
+app.use('/designs', DesignRoutes)// check here we had 
+app.use('/feedback', FeedbackRoutes)
+app.use('/template', TemplateRoutes)
+app.use('/ci_transitions', CITransitionRoutes)
+app.use('/documents', documentRoutes)
+app.use('/service-mapping', ServiceMappingRoutes)
+app.use('/sla', SLARoutes)
+app.use('/tasks', TaskRoutes)
+app.use('/approvals', ApprovalRoutes)
+app.use('/users', UserRoutes)
+app.use('/company', CompanyRoutes)
+app.use('/groups', groupRoutes)
+app.use('/locations', locationsRoutes)
+app.use('/departments', departmentsRoutes)
 app.use("/api/form-designer", FormDesignerRoutes);
 app.use("/form-designer", ApiListRoutes);
 app.use((err, req, res, next) => {
