@@ -9,7 +9,7 @@ const {
 } = require("../../controllers/TemplateControllers/templateControllers");
 
 // ✅ Create Template
-router.post("/newTemplate", createTemplate);
+router.post("/new", createTemplate);
 
 // ✅ Update Template
 router.put("/update/:templateId", updateTemplate);

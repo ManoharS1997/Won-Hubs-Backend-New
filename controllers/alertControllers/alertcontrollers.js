@@ -42,9 +42,11 @@ const AddAlert = async (req, res) => {
     console.log(req.body, "recordData here");
 
     const insertQuery = `
-      INSERT INTO alerts (name, type, description, active, created_by, created, org_id, subject, content, from_address, to_address,cc)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
+  INSERT INTO alerts 
+  (name, type, description, active, created_by, created, org_id, subject, content, from_address, to_address, cc)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`;
+
 
     const values = [
       recordData.name?.value || null,
@@ -64,6 +66,7 @@ const AddAlert = async (req, res) => {
     const [results] = await db.query(insertQuery, values);
 
     res.json({ success: true, recordId: results.insertId });
+    console.log("✅ Alert added successfully");
   } catch (err) {
     console.log("❌ Error in AddAlert:", err);
     res.status(500).json({ error: "Internal Server Error", details: err.message });
@@ -127,7 +130,7 @@ const UpdateAlert = async (req, res) => {
     console.log("✅ Alert updated successfully");
   } catch (err) {
     console.log("❌ Error in UpdateAlert:", err);
-    
+
     res.status(500).json({ error: "Internal Server Error", details: err.message });
   }
 };

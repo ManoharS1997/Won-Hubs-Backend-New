@@ -24,6 +24,7 @@ const getCurrentMySQLDate = () => {
 const createTemplate = async (req, res) => {
   try {
     const recordData = req.body;
+    console.log(req.body,"req.body Heree")
     const accessToken = req.headers["authorization"]?.split(" ")[1];
 
     if (!accessToken) {
@@ -48,7 +49,7 @@ const createTemplate = async (req, res) => {
     type,
     style,
     short_description,
-    who_will_receive,
+    to_address,
     created_by,
     sms_alert,
     preview,
@@ -57,14 +58,15 @@ const createTemplate = async (req, res) => {
     content,
     org_id,
     subject,
-    cc
+    cc,
+    from_address
   )
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `;
 
 
     const values = [
-      recordData.title?.value || null,
+      recordData.name?.value || null,
       recordData.active ?? true,
       recordData.type?.value || recordData.type || null,
       recordData.style || null,
@@ -77,9 +79,9 @@ const createTemplate = async (req, res) => {
       nowMySQL,
       JSON.stringify(recordData.content || []),
       recordData.orgId || orgId || "001",
-      recordData.from?.value || null,
       recordData.subject?.value || null,
       recordData.cc?.value || null,
+      recordData.from?.value || null,
     ];
 
     const [results] = await db.query(insertQuery, values);

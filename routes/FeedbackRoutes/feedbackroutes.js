@@ -8,7 +8,7 @@ const {
 } = require("../../controllers/FeedbackControllers/feedbackControllers");
 
 // Base path: /feedback
-router.post("/newFeedback", createFeedback);
+router.post("/new", createFeedback);
 router.put("/update/:feedbackId", updateFeedback);
 router.get("/:feedbackId", getFeedbackById);
 router.delete("/delete/:feedbackId", deleteFeedback);
