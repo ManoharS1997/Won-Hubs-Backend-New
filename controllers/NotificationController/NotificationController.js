@@ -8,10 +8,8 @@ const createNotification = async (req, res) => {
   try {
     const recordData = req.body;
     // console.log(recordData, "recordData here");
-
     const accessToken = req.headers["authorization"]?.split(" ")[1];
     if (!accessToken) return res.status(401).json({ error: "Unauthorized" });
-
     const decoded = jwt.verify(accessToken, process.env.ACCESS_TOKEN_SECRET);
     const userId = decoded.id;
     const orgId = await getOrganizationIdWithUserId(userId);
@@ -20,7 +18,7 @@ const createNotification = async (req, res) => {
       INSERT INTO notifications (
         name, active, to_address, cc, type, description, subject,
         email_body, created_by, who_will_receive, bulk_notification, sms_alert,
-        preview, created, updated, updated_by, org_id, from
+        preview, created, updated, updated_by, org_id, from_address
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?, ?) 
     `;
@@ -61,10 +59,11 @@ const createNotification = async (req, res) => {
 const updateNotification = async (req, res) => {
   try {
     const recordData = req.body;
-    // console.log(req.paramns, "params Hereee" )
-    console.log(recordData, "recordData here");
     const recordId = req.params.notificationId;
 
+    console.log(recordData, "recordData here");
+
+    // ---- Token ----
     const accessToken = req.headers["authorization"]?.split(" ")[1];
     if (!accessToken) return res.status(401).json({ error: "Unauthorized" });
 
@@ -72,10 +71,11 @@ const updateNotification = async (req, res) => {
     const userId = decoded.id;
     const orgId = await getOrganizationIdWithUserId(userId);
 
-    // ✅ Same extraction logic as createNotification
+    // Helper to extract .value
     const extract = (field) =>
       field && typeof field === "object" ? field.value : field;
 
+    // ---- SQL Query (Corrected) ----
     const updateQuery = `
       UPDATE notifications 
       SET 
@@ -94,31 +94,31 @@ const updateNotification = async (req, res) => {
         preview = ?,
         updated = NOW(),
         updated_by = ?,
-        org_id = ?,
+        org_id = ?
       WHERE id = ?
     `;
 
-    // ✅ Use same structure/order as createNotification
+    // ---- Values (Correct order) ----
     const values = [
-      extract(recordData.name),
-      extract(recordData.active) ?? true,
-      extract(recordData.to),
-      extract(recordData.cc),
-      extract(recordData.type) || "desktop",
-      extract(recordData.description),
-      extract(recordData.subject),
-      recordData.content || null,
-      userId,
-      extract(recordData.whoWillRecieve),
-      extract(recordData.bulkNotification),
-      extract(recordData.smsAlert),
-      extract(recordData.preview),
-      userId,
-      orgId || null,
-      recordId,
-      // extract(recordData.from) || null
+      extract(recordData.name),                        // name
+      extract(recordData.active) ?? true,              // active
+      extract(recordData.to),                          // to_address
+      extract(recordData.cc),                          // cc
+      extract(recordData.type) || "desktop",           // type
+      extract(recordData.description),                 // description
+      extract(recordData.subject),                     // subject
+      recordData.content || null,                      // email_body
+      userId,                                          // created_by
+      extract(recordData.whoWillRecieve),              // who_will_receive
+      extract(recordData.bulkNotification),            // bulk_notification
+      extract(recordData.smsAlert),                    // sms_alert
+      extract(recordData.preview),                     // preview
+      userId,                                          // updated_by
+      orgId || null,                                   // org_id
+      recordId                                         // WHERE id = ?
     ];
 
+    // ---- Execute Query ----
     const [results] = await db.query(updateQuery, values);
 
     if (results.affectedRows === 0) {
@@ -126,7 +126,9 @@ const updateNotification = async (req, res) => {
     }
 
     console.log("✅ Notification updated with ID:", recordId);
+
     return res.json({ success: true, recordId });
+
   } catch (err) {
     console.error("❌ Error updating notification:", err);
     return res.status(500).json({ error: "Unexpected Server Error" });

@@ -11,6 +11,7 @@ const AddLocationFields = require("../../shared/forms/AddLocation")
 const AddDepartmentFields = require("../../shared/forms/AddDepartment")
 const AddTicketFields = require("../../shared/forms/AddTIcket")
 const AddRoleFields=require("../../shared/forms/AddRole")
+const Event_Logs=require('../../shared/forms/AddEventFields')
 
 // const DepartmentData = require('../../shared/forms/DesignForms')
 // const ConnectionFormsFields = require("../../shared/data/connectionFormsData")
@@ -87,6 +88,9 @@ const returnFormFieldFunction = (tablename) => {
       return AddTicketFields;
     case 'roles':
       return AddRoleFields;
+
+    case 'event_logs':
+      return Event_Logs
 
     default:
       return [];

@@ -143,6 +143,7 @@ app.use(
 );
 // API Routes
 // app.use("/api", sharedRoutes);
+app.use('/api/tickets', ticketRoutes)
 app.use("/api/zendesk/connections", zendeskConnectionRoutes);
 app.use("/api/zapier/connections", zapierConnectionRoutes);
 app.use("/api/slack/connections", slackConnectionRoutes);
@@ -165,7 +166,6 @@ app.use("/api", sharedRoutes);
 // Created Routes And Controllers
 
 
-app.use("/tickets", ticketRoutes)
 app.use('/roles', RoleRoutes)
 app.use('/alerts', AlertRoutes)
 app.use('/notifications', NotificationRoutes)
