@@ -142,6 +142,7 @@ const getModuleById = async (req, res) => {
 const getModuleByFields = async (req, res) => {
   try {
     const { category, subcategory, view, department, module } = req.body;
+    console.log(category,subcategory,view,department,module,"Hereee")
 
     if (!category || !subcategory || !view || !department) {
       return res.status(400).json({

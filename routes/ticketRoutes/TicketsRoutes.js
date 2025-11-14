@@ -3,7 +3,7 @@ const router = express.Router();
 const authorization = require("../../utils/auth/authorization");
 
 const ticketControllers = require("../../controllers/TicketControllers");
-
+console.log("triggering to fetch")
 // Create new ticket
 router.post("/newTicket", authorization, ticketControllers.createTicket);
 

@@ -26,8 +26,7 @@ const getCurrentMySQLDate = () => {
 const createFeedback = async (req, res) => {
   try {
     const recordData = req.body;
-    // console.log("Received feedback data:", recordData);
-
+    console.log("Received feedback data:", recordData);
     const accessToken = req.headers["authorization"]?.split(" ")[1];
     if (!accessToken) {
       return res.status(401).json({ error: "Unauthorized: No access token provided" });
