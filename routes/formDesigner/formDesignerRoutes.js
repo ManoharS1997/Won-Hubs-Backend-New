@@ -7,7 +7,10 @@ const {
   getModuleById,
   updateModule,
   deleteModule,
-  getModuleByFields
+  getModuleByFields,
+  saveFormData,
+  assignApi,
+  alterModule,
 } = require("../../controllers/formDesigner/formDesignerController");
 
 router.post("/", createModule);
@@ -16,4 +19,6 @@ router.get("/:id", getModuleById);
 router.put("/:id", updateModule);
 router.delete("/:id", deleteModule);
 router.post("/getModuleByFields", getModuleByFields);
+router.post("/tab/assign-api", assignApi);
+router.post("/:module/create", alterModule);
 module.exports = router;

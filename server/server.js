@@ -22,7 +22,7 @@ require("dotenv").config();
 const https = require("https");
 const { addClient, removeClient } = require("../socket/WebSocket.js");
 const mongoose = require("mongoose");
-
+// require("../jobs/vlifeCron.js")
 const wsdlPath = path.join(__dirname, "user-service.wsdl");
 const { spawn } = require("child_process");
 
