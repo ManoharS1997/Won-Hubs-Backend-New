@@ -63,6 +63,7 @@ const getModuleById = async (req, res) => {
 };
 
 const getModuleByFields = async (req, res) => {
+  // console.log("Triggering in getModuleByFields")
   try {
     const { category, subcategory, view, department, module } = req.body;
     console.log(category,subcategory,view,department,module,"Hereee")

@@ -61,12 +61,13 @@ const AddAlert = async (req, res) => {
       recordData?.from?.value || null,
       recordData?.to?.value || null,
       recordData?.cc?.value || null,
+
     ];
 
     const [results] = await db.query(insertQuery, values);
 
     res.json({ success: true, recordId: results.insertId });
-    console.log("✅ Alert added successfully");
+    // console.log("✅ Alert added successfully");
   } catch (err) {
     console.log("❌ Error in AddAlert:", err);
     res.status(500).json({ error: "Internal Server Error", details: err.message });

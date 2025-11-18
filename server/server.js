@@ -187,9 +187,9 @@ app.use('/users', UserRoutes)
 app.use('/company', CompanyRoutes)
 app.use('/groups', groupRoutes)
 app.use('/locations', locationsRoutes)
-app.use('/departments', departmentsRoutes)
 app.use("/api/form-designer", FormDesignerRoutes);
-app.use("/form-designer", ApiListRoutes);
+app.use('/departments', departmentsRoutes)
+app.use("/form-designer", ApiListRoutes); 
 app.use((err, req, res, next) => {
   console.error("Unhandled error:", err);
   res.status(500).json({
