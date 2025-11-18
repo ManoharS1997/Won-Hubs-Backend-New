@@ -11,6 +11,7 @@ const {
   saveFormData,
   assignApi,
   alterModule,
+  getDynamicModuleData,
 } = require("../../controllers/formDesigner/formDesignerController");
 
 router.post("/", createModule);
@@ -20,5 +21,6 @@ router.put("/:id", updateModule);
 router.delete("/:id", deleteModule);
 router.post("/getModuleByFields", getModuleByFields);
 router.post("/tab/assign-api", assignApi);
-router.post("/:module/create", alterModule);
+router.post("/dynamic/save", alterModule);
+router.get("/dynamic/get", getDynamicModuleData);
 module.exports = router;
