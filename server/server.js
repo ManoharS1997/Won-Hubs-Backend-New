@@ -32,6 +32,7 @@ const authenticateToken = require("../utils/auth/authorization");
 
 const decodeAccessToken = require("../utils/auth/DecodeAccessToken.js");
 const { getOrganizationIdWithUserId } = require("../helpers/findOrgId.js");
+console.log("Server is starting....")
 
 // Import Routes
 const zendeskConnectionRoutes = require("../routes/connectionRoutes/zendesk-routes");
