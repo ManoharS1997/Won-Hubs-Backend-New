@@ -76,6 +76,7 @@ const TaskRoutes = require("../routes/TaskRoutes/tasksRoutes.js");
 const ApprovalRoutes = require("../routes/ApprovalRoutes/ApprovalRoutes.js");
 const FormDesignerRoutes = require("../routes/formDesigner/formDesignerRoutes.js");
 const ApiListRoutes = require("../routes/formDesigner/apiListRoutes.js");
+const EmailRoutes = require("../routes/EmailRoutes/EmailRoutes.js");
 // const LocationRoutes=require('../routes/locations/locationsRoutes.js')
 
 const app = express();
@@ -166,6 +167,7 @@ app.use("/api", sharedRoutes);
 // Created Routes And Controllers
 
 
+app.use('/sendemails', EmailRoutes) 
 app.use('/roles', RoleRoutes)
 app.use('/alerts', AlertRoutes)
 app.use('/notifications', NotificationRoutes)
@@ -189,7 +191,7 @@ app.use('/groups', groupRoutes)
 app.use('/locations', locationsRoutes)
 app.use("/api/form-designer", FormDesignerRoutes);
 app.use('/departments', departmentsRoutes)
-app.use("/form-designer", ApiListRoutes); 
+app.use("/form-designer", ApiListRoutes);
 app.use((err, req, res, next) => {
   console.error("Unhandled error:", err);
   res.status(500).json({
