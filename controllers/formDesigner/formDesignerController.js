@@ -216,252 +216,167 @@ const deleteModule = async (req, res) => {
   }
 };
 
-const alterModule = async (req, res) => {
-  const data = req.body || {};
-
+const alterModule = async (req, res, next) => {
   try {
-    if (!data || Object.keys(data).length === 0) {
+    console.log(req)
+    const data = req.body || {};
+    const files = req.files || {};
+
+    console.log("Incoming BODY:", data);
+    console.log("Incoming FILES:", files);
+
+    if (!data.activeTable || !data.tabName || !data.activeNav) {
       return res.status(400).json({
         success: false,
-        message: "No payload data provided",
+        message: "activeTable, tabName & activeNav are required",
       });
     }
 
-    // 🔹 activeTable = SQL table name
-    let tableName = data.activeTable;
-    if (!tableName) {
+    if (!data.userId) {
       return res.status(400).json({
         success: false,
-        message: "activeTable is required",
+        message: "userId is required",
       });
     }
 
+    const userId = data.userId;
 
-    tableName = tableName.replace(/[^a-zA-Z0-9_]/g, "_");
+    let tableName = `${data.activeTable}__${data.tabName}__${data.activeNav}`
+      .replace(/[^a-zA-Z0-9_]/g, "_")
+      .toLowerCase();
 
-    console.log(tableName);
-    // Validate table name
-    if (!/^[a-zA-Z0-9_]+$/.test(tableName)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid activeTable name",
-      });
-    }
+    const payload = { ...data };
 
-    // -------------------------
-    // 1️⃣ Normalize activeUserData
-    // -------------------------
-    let userMeta = {};
-    if (data.activeUserData) {
-      try {
-        userMeta = JSON.parse(data.activeUserData);
-      } catch {
-        userMeta = {};
-      }
-    }
+    delete payload.activeTable;
+    delete payload.tabName;
+    delete payload.activeNav;
+    delete payload.activeUserData;
+    delete payload.userId;
 
-    const userId = userMeta?.id || null;
+    Object.keys(files).forEach((field) => {
+      const f = files[field][0];
+      payload[field] = {
+        originalName: f.originalname,
+        mimeType: f.mimetype,
+        fileName: f.filename,
+        path: f.path,
+      };
+    });
 
-    // -------------------------
-    // 2️⃣ System fields
-    // -------------------------
-    const systemFields = {
-      activeTable: tableName,
-      tabName: data.tabName || null,
-      activeNav: data.activeNav || null,
-      userId,
+    const normalize = (v) => (typeof v === "object" ? JSON.stringify(v) : v);
+
+    const getType = (v) => {
+      if (typeof v === "object") return "LONGTEXT";
+      if (String(v).length > 255) return "LONGTEXT";
+      return "VARCHAR(255)";
     };
 
-    const incomingData = { ...data, ...systemFields };
+    let baseSchema = `
+      record_id INT AUTO_INCREMENT PRIMARY KEY,
+      userId VARCHAR(255),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    `;
 
-    // -------------------------
-    // 3️⃣ Helpers
-    // -------------------------
-    const getSqlType = (value) => {
-      if (value === null || value === undefined) return "VARCHAR(255)";
-      if (typeof value === "object") return "LONGTEXT";
-      const str = String(value);
-      return str.length > 255 ? "LONGTEXT" : "VARCHAR(255)";
-    };
-
-    const normalizeValue = (value) => {
-      if (typeof value === "object") return JSON.stringify(value);
-      return value;
-    };
-
-    // -------------------------
-    // 4️⃣ Ensure table exists
-    // -------------------------
-    await db.query(`
-      CREATE TABLE IF NOT EXISTS \`${tableName}\` (
-        record_id INT AUTO_INCREMENT PRIMARY KEY
-      )
-    `);
-
-    // -------------------------
-    // 5️⃣ Get existing columns
-    // -------------------------
-    const [existingCols] = await db.query(`SHOW COLUMNS FROM \`${tableName}\``);
-    const existingColNames = existingCols.map((col) => col.Field);
-
-    // -------------------------
-    // 6️⃣ Add missing columns
-    // -------------------------
-    const incomingFields = Object.keys(incomingData);
-
-    const missingCols = incomingFields.filter(
-      (f) => !existingColNames.includes(f)
-    );
-
-    for (const field of missingCols) {
-      try {
-        const sqlType = getSqlType(incomingData[field]);
-        await db.query(
-          `ALTER TABLE \`${tableName}\` ADD COLUMN \`${field}\` ${sqlType}`
-        );
-        console.log(`🟢 Added column '${field}' as ${sqlType}`);
-      } catch (err) {
-        if (err.code !== "ER_DUP_FIELDNAME") console.error(err);
-      }
-    }
-
-    // -------------------------
-    // 7️⃣ Prepare valid data
-    // -------------------------
-    const validData = Object.keys(incomingData).reduce((acc, key) => {
-      acc[key] = normalizeValue(incomingData[key]);
-      return acc;
-    }, {});
-
-    const columns = Object.keys(validData);
-    const values = Object.values(validData);
-
-    // -------------------------
-    // 8️⃣ Composite lookup
-    // -------------------------
-    const filters = [
-      ["userId", userId],
-      ["activeTable", tableName],
-      ["tabName", incomingData.tabName],
-      ["activeNav", incomingData.activeNav],
-    ];
-
-    const whereSql = filters
-      .filter(([_, val]) => val !== null)
-      .map(([field]) => `\`${field}\` = ?`)
-      .join(" AND ");
-
-    const whereValues = filters
-      .filter(([_, val]) => val !== null)
-      .map(([_, val]) => val);
-
-    // -------------------------
-    // 9️⃣ Check if record exists
-    // -------------------------
-    const [existingRecord] = await db.query(
-      `SELECT record_id FROM \`${tableName}\` WHERE ${whereSql} LIMIT 1`,
-      whereValues
-    );
-
-    // -------------------------
-    // 🔁 UPDATE
-    // -------------------------
-    if (existingRecord.length > 0) {
-      const updateSql = columns.map((c) => `\`${c}\` = ?`).join(", ");
-      await db.query(
-        `UPDATE \`${tableName}\` SET ${updateSql} WHERE ${whereSql}`,
-        [...values, ...whereValues]
-      );
-
-      return res.json({
-        success: true,
-        message: "Record updated successfully",
-      });
-    }
-
-    // -------------------------
-    // ➕ INSERT
-    // -------------------------
-    const placeholders = columns.map(() => "?").join(", ");
+    Object.keys(payload).forEach((key) => {
+      baseSchema += `, \`${key}\` ${getType(payload[key])}`;
+    });
 
     await db.query(
-      `INSERT INTO \`${tableName}\` (${columns.join(
-        ","
-      )}) VALUES (${placeholders})`,
-      values
+      `CREATE TABLE IF NOT EXISTS \`${tableName}\` (${baseSchema})`
     );
 
-    return res.json({
-      success: true,
-      message: "Record created successfully",
-    });
-  } catch (error) {
-    console.error("❌ Error in alterModule:", error);
+    const [existingCols] = await db.query(`SHOW COLUMNS FROM \`${tableName}\``);
+    const existing = existingCols.map((col) => col.Field);
+
+    for (const key of Object.keys(payload)) {
+      if (!existing.includes(key)) {
+        await db.query(
+          `ALTER TABLE \`${tableName}\` ADD COLUMN \`${key}\` ${getType(
+            payload[key]
+          )}`
+        );
+      }
+    }
+
+    if (!data.record_id) {
+      const cols = ["userId", ...Object.keys(payload)];
+      const values = [userId, ...Object.values(payload).map(normalize)];
+      const qMarks = cols.map(() => "?").join(",");
+
+      await db.query(
+        `INSERT INTO \`${tableName}\` (${cols.join(",")}) VALUES (${qMarks})`,
+        values
+      );
+
+      return res.json({ success: true, message: "Record created" });
+    }
+
+    const updateSQL = Object.keys(payload)
+      .map((key) => `\`${key}\`=?`)
+      .join(",");
+
+    await db.query(
+      `UPDATE \`${tableName}\` SET ${updateSQL} WHERE record_id=? AND userId=?`,
+      [...Object.values(payload).map(normalize), data.record_id, userId]
+    );
+
+    return res.json({ success: true, message: "Record updated" });
+  } catch (err) {
+    console.error("❌ alterModule Error:", err);
     return res.status(500).json({
       success: false,
-      message: error.message || "Internal Server Error",
+      message: err.message,
     });
   }
 };
 
 const getDynamicModuleData = async (req, res) => {
-  console.log("Fetching dynamic data...");
-
-  let { activeTable, tabName, activeNav, userId } = req.query;
-
   try {
+    let { activeTable, tabName, activeNav, userId } = req.query;
+
     if (!activeTable || !tabName || !activeNav) {
       return res.status(400).json({
         success: false,
-        message: "activeTable, tabName and activeNav are required",
+        message: "activeTable, tabName, activeNav are required",
       });
     }
 
-    activeTable = activeTable.replace(/[^a-zA-Z0-9_]/g, "_");
-
-    // Validate table name
-    if (!/^[a-zA-Z0-9_]+$/.test(activeTable)) {
+    if (!userId) {
       return res.status(400).json({
         success: false,
-        message: "Invalid activeTable name",
+        message: "userId is required",
       });
     }
 
-    // WHERE config
-    let where = ` WHERE activeTable = ? AND tabName = ? AND activeNav = ? `;
-    let params = [activeTable, tabName, activeNav];
+    const tableName = `${activeTable}__${tabName}__${activeNav}`
+      .replace(/[^a-zA-Z0-9_]/g, "_")
+      .toLowerCase();
 
-    if (userId) {
-      where += ` AND userId = ? `;
-      params.push(userId);
-    }
-
-    // QUERY
     const [rows] = await db.query(
-      `SELECT * FROM \`${activeTable}\` ${where}`,
-      params
+      `SELECT * FROM \`${tableName}\` WHERE userId = ? ORDER BY record_id DESC LIMIT 1`,
+      [userId]
     );
 
-    // Parse JSON-like fields
-    const cleanedRows = rows.map((row) => {
-      if (row.activeUserData) {
-        try {
-          row.activeUserData = JSON.parse(row.activeUserData);
-        } catch { }
-      }
-      return row;
-    });
+    if (!rows || rows.length === 0) {
+      return res.json({ success: true, data: null });
+    }
 
-    return res.json({
-      success: true,
-      count: cleanedRows.length,
-      data: cleanedRows,
-    });
-  } catch (error) {
-    console.error("❌ Error in getDynamicModuleData:", error);
+    const cleaned = {};
+    const record = rows[0];
+
+    for (const key in record) {
+      try {
+        cleaned[key] = JSON.parse(record[key]);
+      } catch {
+        cleaned[key] = record[key];
+      }
+    }
+
+    return res.json({ success: true, data: cleaned });
+  } catch (err) {
     return res.status(500).json({
       success: false,
-      message: error.message,
+      message: err.message,
     });
   }
 };
