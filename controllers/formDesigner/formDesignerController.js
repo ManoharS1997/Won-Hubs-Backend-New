@@ -215,19 +215,15 @@ const deleteModule = async (req, res) => {
   }
 };
 
-const alterModule = async (req, res) => {
+const alterModule = async (req, res, next) => {
   try {
-    // req.body will contain text fields
-    // req.files (if using multer) will contain uploaded files
+    console.log(req)
     const data = req.body || {};
     const files = req.files || {};
 
     console.log("Incoming BODY:", data);
     console.log("Incoming FILES:", files);
 
-    // ---------------------------
-    // 1️⃣ VALIDATE REQUIRED FIELDS
-    // ---------------------------
     if (!data.activeTable || !data.tabName || !data.activeNav) {
       return res.status(400).json({
         success: false,
@@ -244,16 +240,10 @@ const alterModule = async (req, res) => {
 
     const userId = data.userId;
 
-    // ---------------------------
-    // 2️⃣ BUILD DYNAMIC TABLE NAME
-    // ---------------------------
     let tableName = `${data.activeTable}__${data.tabName}__${data.activeNav}`
       .replace(/[^a-zA-Z0-9_]/g, "_")
       .toLowerCase();
 
-    // ---------------------------
-    // 3️⃣ CLEAN PAYLOAD
-    // ---------------------------
     const payload = { ...data };
 
     delete payload.activeTable;
@@ -262,10 +252,6 @@ const alterModule = async (req, res) => {
     delete payload.activeUserData;
     delete payload.userId;
 
-    // ---------------------------
-    // 4️⃣ MERGE FILES INTO PAYLOAD
-    // ---------------------------
-    // If using multer, files come as array: req.files.image[0]
     Object.keys(files).forEach((field) => {
       const f = files[field][0];
       payload[field] = {
@@ -276,9 +262,6 @@ const alterModule = async (req, res) => {
       };
     });
 
-    // ---------------------------
-    // 5️⃣ HELPERS
-    // ---------------------------
     const normalize = (v) => (typeof v === "object" ? JSON.stringify(v) : v);
 
     const getType = (v) => {
@@ -287,9 +270,6 @@ const alterModule = async (req, res) => {
       return "VARCHAR(255)";
     };
 
-    // ---------------------------
-    // 6️⃣ BUILD TABLE SCHEMA
-    // ---------------------------
     let baseSchema = `
       record_id INT AUTO_INCREMENT PRIMARY KEY,
       userId VARCHAR(255),
@@ -304,15 +284,9 @@ const alterModule = async (req, res) => {
       `CREATE TABLE IF NOT EXISTS \`${tableName}\` (${baseSchema})`
     );
 
-    // ---------------------------
-    // 7️⃣ CHECK EXISTING COLUMNS
-    // ---------------------------
     const [existingCols] = await db.query(`SHOW COLUMNS FROM \`${tableName}\``);
     const existing = existingCols.map((col) => col.Field);
 
-    // ---------------------------
-    // 8️⃣ ADD NEW COLUMNS IF NEEDED
-    // ---------------------------
     for (const key of Object.keys(payload)) {
       if (!existing.includes(key)) {
         await db.query(
@@ -323,9 +297,6 @@ const alterModule = async (req, res) => {
       }
     }
 
-    // ---------------------------
-    // 9️⃣ INSERT (NO record_id)
-    // ---------------------------
     if (!data.record_id) {
       const cols = ["userId", ...Object.keys(payload)];
       const values = [userId, ...Object.values(payload).map(normalize)];
@@ -339,9 +310,6 @@ const alterModule = async (req, res) => {
       return res.json({ success: true, message: "Record created" });
     }
 
-    // ---------------------------
-    // 🔟 UPDATE (WITH record_id)
-    // ---------------------------
     const updateSQL = Object.keys(payload)
       .map((key) => `\`${key}\`=?`)
       .join(",");
