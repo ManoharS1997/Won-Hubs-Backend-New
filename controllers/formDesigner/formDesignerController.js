@@ -110,6 +110,7 @@ const createModule = async (req, res) => {
     await module.save();
     res.status(201).json({ success: true, data: module });
   } catch (error) {
+    console.log("Error in createModule:", error);
     handleError(res, error, 400);
   }
 };
@@ -235,9 +236,9 @@ const alterModule = async (req, res) => {
       });
     }
 
-    
+
     tableName = tableName.replace(/[^a-zA-Z0-9_]/g, "_");
-    
+
     console.log(tableName);
     // Validate table name
     if (!/^[a-zA-Z0-9_]+$/.test(tableName)) {
@@ -446,7 +447,7 @@ const getDynamicModuleData = async (req, res) => {
       if (row.activeUserData) {
         try {
           row.activeUserData = JSON.parse(row.activeUserData);
-        } catch {}
+        } catch { }
       }
       return row;
     });
