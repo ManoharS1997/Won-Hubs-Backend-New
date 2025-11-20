@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
-console.log("Triggering in Routes")
-
+const multer = require("multer");
+const path = require("path");
 const {
   createModule,
   getModules,
@@ -9,11 +9,17 @@ const {
   updateModule,
   deleteModule,
   getModuleByFields,
-  saveFormData,
   assignApi,
   alterModule,
   getDynamicModuleData,
 } = require("../../controllers/formDesigner/formDesignerController");
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 20 * 1024 * 1024,
+  },
+});
 
 router.post("/", createModule);
 router.get("/", getModules);
@@ -22,6 +28,7 @@ router.put("/:id", updateModule);
 router.delete("/:id", deleteModule);
 router.post("/getModuleByFields", getModuleByFields);
 router.post("/tab/assign-api", assignApi);
-router.post("/dynamic/save", alterModule);
+router.post("/dynamic/save", upload.any(), alterModule);
 router.get("/dynamic/get", getDynamicModuleData);
+
 module.exports = router;
