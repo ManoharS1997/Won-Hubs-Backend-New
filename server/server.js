@@ -2,7 +2,6 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const bcrypt = require("bcryptjs");
 const cookieParser = require("cookie-parser");
-const multer = require("multer");
 const xlsx = require("xlsx");
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
@@ -85,7 +84,6 @@ const CalendarRoutes = require("../routes/CalendarEventRoutes/CalendarRoutes.js"
 
 const app = express();
 const PORT = process.env.PORT || 3002;
-const upload = multer({ dest: "uploads/" });
 
 // Initialize Redis Client
 const redisClient = redis.createClient();
@@ -135,17 +133,17 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: "500mb" }));
 app.use(cookieParser());
 app.use(express.raw({ type: () => true }));
-
+app.use(bodyParser.urlencoded({ extended: true, limit: "500mb" }));
 // Serve Static Files
-app.use(
-  express.static(path.join(__dirname, "public"), {
-    setHeaders: (res, filePath) => {
-      if (filePath.endsWith(".mjs")) {
-        res.setHeader("Content-Type", "text/javascript");
-      }
-    },
-  })
-);
+// app.use(
+//   express.static(path.join(__dirname, "public"), {
+//     setHeaders: (res, filePath) => {
+//       if (filePath.endsWith(".mjs")) {
+//         res.setHeader("Content-Type", "text/javascript");
+//       }
+//     },
+//   })
+// );
 // API Routes
 // app.use("/api", sharedRoutes);
 app.use('/api/tickets', ticketRoutes)
