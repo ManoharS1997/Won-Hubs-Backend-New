@@ -101,9 +101,9 @@ const returnFormFieldFunction = (tablename) => {
 const getUserFormFields = async (req, res, next) => {
   // console.log("Triggering heree")
   try {
-    console.log(req.params, "params Here ")
+    // console.log(req.params, "params Here ")
     const data = returnFormFieldFunction(req?.params?.formName)
-    console.log(data, "data here ")
+    // console.log(data, "data here ")
     res.status(200).json({ success: true, data: data });
   } catch (err) {
     console.log('error fetching AddUserFormFields', err)

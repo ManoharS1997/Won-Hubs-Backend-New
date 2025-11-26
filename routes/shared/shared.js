@@ -24,7 +24,6 @@ router.get("/table/:tableName", authorization, tableControllers.getTableData);
 router.get("/get-instance-id", authorization, tableControllers.getInstanceId);
 router.get("/table/columns/:tableName", authorization, tableControllers.getTableColumns);
 router.get("/table/getRecordData/:tableName/:recordId", authorization, tableControllers.getAnyRecorddata);
-
 router.get("/add/fields/:formName", formControllers.getUserFormFields);
 router.get("/get/design-department-data", formControllers.getDesignsDepartmentData);
 router.get("/external/register-form", formControllers.getExternalUserRegistrationformFieldsData);
@@ -45,5 +44,6 @@ router.post("/bulk/table/upload", upload.single("file"),bulkImportControllers.bu
 router.post("/table-fields/template/:tableName", bulkImportControllers.downloadTemplate);
 router.post("/get/report-data", reportControllers.getReportdata);
 router.post("/fetch/gauge-reports-data", reportControllers.fetchGaugeReportsData);
+router.get("/get/all-emails", readmailsControllers.getAllEmails);
 
 module.exports = router;

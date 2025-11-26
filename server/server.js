@@ -32,7 +32,9 @@ const authenticateToken = require("../utils/auth/authorization");
 
 const decodeAccessToken = require("../utils/auth/DecodeAccessToken.js");
 const { getOrganizationIdWithUserId } = require("../helpers/findOrgId.js");
-console.log("Server is starting....")
+const { getOAuthClient } = require('../server/getoAuthClient.js')
+const { google } = require("googleapis");
+
 
 // Import Routes
 const zendeskConnectionRoutes = require("../routes/connectionRoutes/zendesk-routes");
@@ -78,6 +80,7 @@ const ApprovalRoutes = require("../routes/ApprovalRoutes/ApprovalRoutes.js");
 const FormDesignerRoutes = require("../routes/formDesigner/formDesignerRoutes.js");
 const ApiListRoutes = require("../routes/formDesigner/apiListRoutes.js");
 const EmailRoutes = require("../routes/EmailRoutes/EmailRoutes.js");
+const CalendarRoutes = require("../routes/CalendarEventRoutes/CalendarRoutes.js");
 // const LocationRoutes=require('../routes/locations/locationsRoutes.js')
 
 const app = express();
@@ -168,7 +171,7 @@ app.use("/api", sharedRoutes);
 // Created Routes And Controllers
 
 
-app.use('/sendemails', EmailRoutes) 
+app.use('/sendemails', EmailRoutes)
 app.use('/roles', RoleRoutes)
 app.use('/alerts', AlertRoutes)
 app.use('/notifications', NotificationRoutes)
@@ -193,6 +196,7 @@ app.use('/locations', locationsRoutes)
 app.use("/api/form-designer", FormDesignerRoutes);
 app.use('/departments', departmentsRoutes)
 app.use("/form-designer", ApiListRoutes);
+app.use("/calendar", CalendarRoutes);
 app.use((err, req, res, next) => {
   console.error("Unhandled error:", err);
   res.status(500).json({
@@ -478,6 +482,115 @@ app.get("/get-table-names", authenticateToken, async (req, res) => {
     });
   } catch (err) {
     console.error("Error getting table names:", err);
+  }
+});
+
+// Hereee you are workingg on google oauth
+// ------------------ GOOGLE LOGIN ------------------
+app.get("/auth/google", (req, res) => {
+  console.log("Triggering Here step1")
+  const oauth2Client = getOAuthClient();
+
+  const scopes = [
+    "https://www.googleapis.com/auth/calendar",
+    // "https://www.googleapis.com/auth/userinfo.email",
+    // "https://www.googleapis.com/auth/userinfo.profile",
+  ];
+
+  const url = oauth2Client.generateAuthUrl({
+    access_type: "offline",
+    response_type: "code",
+    prompt: "consent",
+    scope: scopes,
+  });
+  console.log("url", url)
+  return res.redirect(url);
+});
+
+// ------------------ GOOGLE CALLBACK ------------------
+app.get("/auth/google/callback", async (req, res) => {
+  try {
+    const oauth2Client = getOAuthClient();
+    const { code } = req.query;
+
+    if (!code) {
+      console.log("❌ No OAuth code received");
+      return res.redirect("http://localhost:5173/newCal?google_auth=error");
+    }
+
+    // 1️⃣ Exchange code → get tokens
+    const { tokens } = await oauth2Client.getToken(code);
+    oauth2Client.setCredentials(tokens);
+
+    console.log("🔑 GOOGLE TOKENS RECEIVED:");
+    console.log("   ACCESS TOKEN:", tokens.access_token);
+    console.log("   REFRESH TOKEN:", tokens.refresh_token);
+
+    // 2️⃣ Store tokens temporarily (later will store in DB)
+    if (tokens.refresh_token) {
+      global.googleTokens = tokens;
+    } else {
+      // If Google didn’t send refresh_token again, keep old one
+      global.googleTokens = {
+        ...global.googleTokens,
+        ...tokens
+      };
+    }
+
+    console.log("✅ Google OAuth Success");
+    console.log("Stored Tokens:", global.googleTokens);
+
+    // 3️⃣ Redirect safely back to frontend Calendar page
+    return res.redirect("http://localhost:5173/newCal?google_auth=success");
+
+  } catch (err) {
+    console.log("❌ Google OAuth Error:", err.message);
+    return res.redirect("http://localhost:5173/newCal?google_auth=error");
+  }
+});
+
+app.post("/create-meet", async (req, res) => {
+  try {
+    console.log("Triggering in create Meet")
+    const tokens = global.googleTokens;
+
+    if (!tokens) {
+      return res.status(400).json({ error: "Google not connected" });
+    }
+
+    const oauth2Client = getOAuthClient();
+    oauth2Client.setCredentials(tokens);
+
+    const calendar = google.calendar({ version: "v3", auth: oauth2Client });
+
+    const event = {
+      summary: "WonHub Video Call Meeting",
+      start: { dateTime: new Date().toISOString() },
+      end: { dateTime: new Date(Date.now() + 30 * 60000).toISOString() },
+
+      conferenceData: {
+        createRequest: {
+          requestId: "wonhub-" + Date.now(),
+        },
+      },
+    };
+
+    const response = await calendar.events.insert({
+      calendarId: "primary",
+      resource: event,
+      conferenceDataVersion: 1,
+    });
+
+    const meetLink = response.data.hangoutLink;
+    console.log("Meet Link Created JESUS :", meetLink);
+
+    res.json({
+      success: true,
+      meetLink,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "Failed to create meet link" });
   }
 });
 
