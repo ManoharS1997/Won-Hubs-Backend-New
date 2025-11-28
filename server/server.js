@@ -80,6 +80,7 @@ const FormDesignerRoutes = require("../routes/formDesigner/formDesignerRoutes.js
 const ApiListRoutes = require("../routes/formDesigner/apiListRoutes.js");
 const EmailRoutes = require("../routes/EmailRoutes/EmailRoutes.js");
 const CalendarRoutes = require("../routes/CalendarEventRoutes/CalendarRoutes.js");
+const GoogleAuthRoutes = require("../routes/GoogleAuthRoutes/GoogleAuthRoutes.js");
 // const LocationRoutes=require('../routes/locations/locationsRoutes.js')
 
 const app = express();
@@ -147,6 +148,7 @@ app.use(bodyParser.urlencoded({ extended: true, limit: "500mb" }));
 // API Routes
 // app.use("/api", sharedRoutes);
 app.use('/api/tickets', ticketRoutes)
+app.use('/auth',GoogleAuthRoutes)
 app.use("/api/zendesk/connections", zendeskConnectionRoutes);
 app.use("/api/zapier/connections", zapierConnectionRoutes);
 app.use("/api/slack/connections", slackConnectionRoutes);
@@ -491,8 +493,7 @@ app.get("/auth/google", (req, res) => {
 
   const scopes = [
     "https://www.googleapis.com/auth/calendar",
-    // "https://www.googleapis.com/auth/userinfo.email",
-    // "https://www.googleapis.com/auth/userinfo.profile",
+
   ];
 
   const url = oauth2Client.generateAuthUrl({
@@ -539,7 +540,7 @@ app.get("/auth/google/callback", async (req, res) => {
     console.log("Stored Tokens:", global.googleTokens);
 
     // 3️⃣ Redirect safely back to frontend Calendar page
-    return res.redirect("http://localhost:5173/newCal?google_auth=success");
+    return res.redirect("http://localhost:5173/eventUpdate/?google_auth=success");
 
   } catch (err) {
     console.log("❌ Google OAuth Error:", err.message);

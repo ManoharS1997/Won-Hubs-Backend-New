@@ -2,6 +2,7 @@ const { db } = require("../../config/DB-connection");
 const { google } = require("googleapis");
 const { getOAuthClient } = require("../../server/getoAuthClient");
 const nodemailer = require("nodemailer");
+const axios=require('axios')
 // const
 
 
@@ -102,15 +103,170 @@ const GetEventsBasedOnMonthAndYear = async (req, res) => {
     }
 };
 
+// const AddEvent = async (req, res) => {
+//     try {
+//         console.log("EVENT RECEIVED:", req.body);
+//         const eventData = req.body;
+//         const { title, eventDate, type, location, startTime, endTime, guests } = eventData;
+
+//         // 1️⃣ SAVE EVENT IN DATABASE (basic insert first)
+//         const insertQuery = `
+//             INSERT INTO calendar_events 
+//             (event_name, date, event_type, location, org_id, from_time, to_time, guests)
+//             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+//         `;
+
+//         const values = [
+//             title,
+//             eventDate,
+//             type,
+//             location || "",
+//             "Hello",
+//             startTime,
+//             endTime,
+//             JSON.stringify(guests)
+//         ];
+
+//         const [result] = await db.execute(insertQuery, values);
+//         const dbEventId = result.insertId;
+//         console.log("DB INSERTED ID:", dbEventId);
+
+//         // 2️⃣ IF NOT MEETING TYPE → SKIP GOOGLE CALENDAR
+//         const isMeetingType = type === "Video calls" || type === "Meetings";
+
+//         if (!isMeetingType) {
+//             return res.json({
+//                 success: true,
+//                 eventId: dbEventId,
+//                 meetLink: null
+//             });
+//         }
+
+//         // 3️⃣ CHECK GOOGLE TOKENS
+//         if (!global.googleTokens) {
+//             return res.status(400).json({
+//                 error: "Google Calendar is not connected. Please connect first."
+//             });
+//         }
+
+//         const oauth2Client = getOAuthClient();
+//         oauth2Client.setCredentials(global.googleTokens);
+//         const calendar = google.calendar({ version: "v3", auth: oauth2Client });
+
+//         // 4️⃣ BUILD GOOGLE EVENT BODY
+//         const startISO = new Date(eventDate).toISOString();
+//         const endISO = new Date(
+//             new Date(eventDate).getTime() + 30 * 60000
+//         ).toISOString();
+
+//         const googleEventBody = {
+//             summary: title,
+//             location: location || "",
+//             description: "Event created from WON Platform.",
+//             start: { dateTime: startISO, timeZone: "Asia/Kolkata" },
+//             end: { dateTime: endISO, timeZone: "Asia/Kolkata" },
+//             attendees: guests.map(g => ({ email: g.email })),
+//             conferenceData: {
+//                 createRequest: {
+//                     requestId: "wonhub-" + Date.now(),
+//                 }
+//             }
+//         };
+
+//         // 5️⃣ INSERT EVENT INTO GOOGLE CALENDAR
+//         let meetLink = "";
+//         let googleEventId = null;
+
+//         try {
+//             const googleResp = await calendar.events.insert({
+//                 calendarId: "primary",
+//                 resource: googleEventBody,
+//                 conferenceDataVersion: 1,
+//                 sendUpdates: "none" // we send our own emails
+//             });
+
+//             googleEventId = googleResp.data.id;
+//             meetLink =
+//                 googleResp.data.hangoutLink ||
+//                 googleResp.data.conferenceData?.entryPoints?.[0]?.uri ||
+//                 "";
+
+//             console.log("GOOGLE EVENT CREATED →", meetLink, "ID:", googleEventId);
+//         } catch (err) {
+//             console.log("Google Calendar Error:", err);
+//         }
+
+//         // 6️⃣ UPDATE DB WITH google_event_id + meet_link
+//         await db.execute(
+//             `UPDATE calendar_events 
+//              SET google_event_id = ?, meet_link = ?
+//              WHERE id = ?`,// i am asking at here from where  meeting is adding at here only 
+//             [googleEventId, meetLink, dbEventId]
+//         );
+
+//         // 7️⃣ SEND EMAIL (your existing transporter)
+//         const transporter = nodemailer.createTransport({
+//             service: "gmail",
+//             auth: {
+//                 user: process.env.ORG_EMAIL,
+//                 pass: process.env.ORG_EMAIL_PASS
+//             }
+//         });
+
+//         for (let guest of guests) {
+//             const htmlBody = `
+//                 <h2 style="color:#444;">You are invited to a new event!</h2>
+//                 <p><strong>Event:</strong> ${title}</p>
+//                 <p><strong>Date:</strong> ${eventDate}</p>
+//                 <p><strong>Time:</strong> ${startTime} - ${endTime}</p>
+//                 ${meetLink
+//                     ? `<p><strong>Meet Link:</strong> <a href="${meetLink}">${meetLink}</a></p>`
+//                     : ""
+//                 }
+//                 <br/>
+//                 <p>Regards,<br/>WON Platform</p>
+//             `;
+
+//             await transporter.sendMail({
+//                 from: process.env.ORG_EMAIL,
+//                 to: guest.email,
+//                 subject: `Invitation: ${title}`,
+//                 html: htmlBody
+//             });
+//         }
+
+//         // 8️⃣ FINAL SUCCESS RESPONSE
+
+//         return res.json({
+//             success: true,
+//             eventId: dbEventId,
+//             meetLink
+//         });
+
+//     } catch (error) {
+//         console.log("FINAL ERROR:", error);
+//         return res.status(500).json({ error: "Failed to create event" });
+//     }
+// };
+// cancel event
 
 
 const AddEvent = async (req, res) => {
     try {
         console.log("EVENT RECEIVED:", req.body);
-        const eventData = req.body;
-        const { title, eventDate, type, location, startTime, endTime, guests } = eventData;
 
-        // 1️⃣ SAVE EVENT IN DATABASE (basic insert first)
+        const {
+            title,
+            eventDate,
+            type,
+            location,
+            startTime,
+            endTime,
+            guests,
+            provider
+        } = req.body;
+
+        // 1️⃣ SAVE EVENT IN DATABASE (basic insert)
         const insertQuery = `
             INSERT INTO calendar_events 
             (event_name, date, event_type, location, org_id, from_time, to_time, guests)
@@ -132,7 +288,7 @@ const AddEvent = async (req, res) => {
         const dbEventId = result.insertId;
         console.log("DB INSERTED ID:", dbEventId);
 
-        // 2️⃣ IF NOT MEETING TYPE → SKIP GOOGLE CALENDAR
+        // 2️⃣ NO calendar integration for non-meeting types
         const isMeetingType = type === "Video calls" || type === "Meetings";
 
         if (!isMeetingType) {
@@ -143,69 +299,118 @@ const AddEvent = async (req, res) => {
             });
         }
 
-        // 3️⃣ CHECK GOOGLE TOKENS
-        if (!global.googleTokens) {
-            return res.status(400).json({
-                error: "Google Calendar is not connected. Please connect first."
-            });
-        }
+        // Universal Vars
+        let meetLink = "";
+        let googleEventId = null;
+        let yahooEventId = null;
 
-        const oauth2Client = getOAuthClient();
-        oauth2Client.setCredentials(global.googleTokens);
-        const calendar = google.calendar({ version: "v3", auth: oauth2Client });
-
-        // 4️⃣ BUILD GOOGLE EVENT BODY
         const startISO = new Date(eventDate).toISOString();
         const endISO = new Date(
             new Date(eventDate).getTime() + 30 * 60000
         ).toISOString();
 
-        const googleEventBody = {
-            summary: title,
-            location: location || "",
-            description: "Event created from WON Platform.",
-            start: { dateTime: startISO, timeZone: "Asia/Kolkata" },
-            end: { dateTime: endISO, timeZone: "Asia/Kolkata" },
-            attendees: guests.map(g => ({ email: g.email })),
-            conferenceData: {
-                createRequest: {
-                    requestId: "wonhub-" + Date.now(),
-                }
+        // -------------------------------------------------------------------
+        // 3️⃣ GOOGLE CALENDAR FLOW
+        // -------------------------------------------------------------------
+        if (provider === "google") {
+            if (!global.googleTokens) {
+                return res.status(400).json({ error: "Google is not connected." });
             }
-        };
 
-        // 5️⃣ INSERT EVENT INTO GOOGLE CALENDAR
-        let meetLink = "";
-        let googleEventId = null;
+            console.log("📌 Creating Google Calendar Event...");
 
-        try {
-            const googleResp = await calendar.events.insert({
-                calendarId: "primary",
-                resource: googleEventBody,
-                conferenceDataVersion: 1,
-                sendUpdates: "none" // we send our own emails
-            });
+            const oauth2Client = getOAuthClient();
+            oauth2Client.setCredentials(global.googleTokens);
 
-            googleEventId = googleResp.data.id;
-            meetLink =
-                googleResp.data.hangoutLink ||
-                googleResp.data.conferenceData?.entryPoints?.[0]?.uri ||
-                "";
+            const calendar = google.calendar({ version: "v3", auth: oauth2Client });
 
-            console.log("GOOGLE EVENT CREATED →", meetLink, "ID:", googleEventId);
-        } catch (err) {
-            console.log("Google Calendar Error:", err);
+            const googleEventBody = {
+                summary: title,
+                location: location || "",
+                description: "Event created from WON Platform",
+                start: { dateTime: startISO, timeZone: "Asia/Kolkata" },
+                end: { dateTime: endISO, timeZone: "Asia/Kolkata" },
+                attendees: guests.map(g => ({ email: g.email })),
+                conferenceData: {
+                    createRequest: {
+                        requestId: "wonhub-" + Date.now(),
+                    }
+                }
+            };
+
+            try {
+                const googleResp = await calendar.events.insert({
+                    calendarId: "primary",
+                    resource: googleEventBody,
+                    conferenceDataVersion: 1
+                });
+
+                googleEventId = googleResp.data.id;
+
+                meetLink =
+                    googleResp.data.hangoutLink ||
+                    googleResp.data.conferenceData?.entryPoints?.[0]?.uri ||
+                    "";
+
+                console.log("GOOGLE EVENT CREATED →", googleEventId, meetLink);
+
+            } catch (err) {
+                console.log("GOOGLE ERROR:", err);
+            }
         }
 
-        // 6️⃣ UPDATE DB WITH google_event_id + meet_link
+        // -------------------------------------------------------------------
+        // 4️⃣ YAHOO CALENDAR FLOW
+        // -------------------------------------------------------------------
+        else if (provider === "yahoo") {
+            if (!global.yahooTokens?.access_token) {
+                return res.status(400).json({ error: "Yahoo is not connected." });
+            }
+
+            console.log("📌 Creating Yahoo Calendar Event...");
+
+            try {
+                const yahooResp = await axios.post(
+                    "https://calendar.yahoo.com/ws/v3/calendars/events",
+                    {
+                        title,
+                        start: startISO,
+                        end: endISO,
+                        location,
+                        description: "Event created from WON Platform",
+                        attendees: guests.map(g => g.email)
+                    },
+                    {
+                        headers: {
+                            Authorization: `Bearer ${global.yahooTokens.access_token}`,
+                            "Content-Type": "application/json"
+                        }
+                    }
+                );
+
+                yahooEventId = yahooResp.data?.id;
+
+                console.log("YAHOO EVENT CREATED →", yahooEventId);
+
+            } catch (err) {
+
+                console.log("YAHOO CALENDAR ERROR:", err.response?.data || err);
+            }
+        }
+
+        // -------------------------------------------------------------------
+        // 5️⃣ SAVE RESULTS (google_event_id, yahoo_event_id, meet_link)
+        // -------------------------------------------------------------------
         await db.execute(
             `UPDATE calendar_events 
-             SET google_event_id = ?, meet_link = ?
-             WHERE id = ?`,// i am asking at here from where  meeting is adding at here only 
-            [googleEventId, meetLink, dbEventId]
+             SET google_event_id = ?, yahoo_event_id = ?, meet_link = ?
+             WHERE id = ?`,
+            [googleEventId, yahooEventId, meetLink, dbEventId]
         );
 
-        // 7️⃣ SEND EMAIL (your existing transporter)
+        // -------------------------------------------------------------------
+        // 6️⃣ SEND EMAILS TO GUESTS
+        // -------------------------------------------------------------------
         const transporter = nodemailer.createTransport({
             service: "gmail",
             auth: {
@@ -220,10 +425,7 @@ const AddEvent = async (req, res) => {
                 <p><strong>Event:</strong> ${title}</p>
                 <p><strong>Date:</strong> ${eventDate}</p>
                 <p><strong>Time:</strong> ${startTime} - ${endTime}</p>
-                ${meetLink
-                    ? `<p><strong>Meet Link:</strong> <a href="${meetLink}">${meetLink}</a></p>`
-                    : ""
-                }
+                ${meetLink ? `<p><strong>Meet Link:</strong> <a href="${meetLink}">${meetLink}</a></p>` : ""}
                 <br/>
                 <p>Regards,<br/>WON Platform</p>
             `;
@@ -236,11 +438,14 @@ const AddEvent = async (req, res) => {
             });
         }
 
-        // 8️⃣ FINAL SUCCESS RESPONSE
-
+        // -------------------------------------------------------------------
+        // 7️⃣ FINAL RESPONSE
+        // -------------------------------------------------------------------
         return res.json({
             success: true,
             eventId: dbEventId,
+            googleEventId,
+            yahooEventId,
             meetLink
         });
 
@@ -249,7 +454,9 @@ const AddEvent = async (req, res) => {
         return res.status(500).json({ error: "Failed to create event" });
     }
 };
-// cancel event
+
+
+
 
 const CancelEvent = async (req, res) => {
     try {
