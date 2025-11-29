@@ -227,7 +227,6 @@ const alterModule = async (req, res, next) => {
     console.log("Incoming BODY:", data);
     console.log("Incoming FILES:", files);
 
-    // Required fields
     if (!data.activeTable || !data.tabName || !data.activeNav) {
       return res.status(400).json({
         success: false,
@@ -243,12 +242,10 @@ const alterModule = async (req, res, next) => {
 
     const userId = data.userId;
 
-    // Safe table name
     let tableName = `${data.activeTable}__${data.tabName}__${data.activeNav}`
       .replace(/[^a-zA-Z0-9_]/g, "_")
       .toLowerCase();
 
-    // Build payload
     const payload = { ...data };
     delete payload.activeTable;
     delete payload.tabName;
@@ -256,9 +253,6 @@ const alterModule = async (req, res, next) => {
     delete payload.activeUserData;
     delete payload.userId;
 
-    /* -----------------------------------------------------------
-     🔥 Upload Files to S3
-    ----------------------------------------------------------- */
     for (const f of files) {
       const fileKey = `${Date.now()}-${crypto
         .randomBytes(8)
@@ -275,13 +269,9 @@ const alterModule = async (req, res, next) => {
 
       const fileUrl = `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileKey}`;
 
-      // Replace field value with S3 URL
       payload[f.fieldname] = fileUrl;
     }
 
-    /* -----------------------------------------------------------
-     Normalize Values & SQL Type
-    ----------------------------------------------------------- */
     const normalize = (v) => {
       if (v === undefined || v === null) return null;
       if (typeof v === "object") return JSON.stringify(v);
@@ -295,9 +285,6 @@ const alterModule = async (req, res, next) => {
       return "VARCHAR(255)";
     };
 
-    /* -----------------------------------------------------------
-     CREATE TABLE IF NOT EXISTS
-    ----------------------------------------------------------- */
     let baseSchema = `
       record_id INT AUTO_INCREMENT PRIMARY KEY,
       userId VARCHAR(255),
@@ -312,9 +299,6 @@ const alterModule = async (req, res, next) => {
       `CREATE TABLE IF NOT EXISTS \`${tableName}\` (${baseSchema})`
     );
 
-    /* -----------------------------------------------------------
-     ALTER TABLE → Add missing columns
-    ----------------------------------------------------------- */
     const [existingCols] = await db.query(`SHOW COLUMNS FROM \`${tableName}\``);
     const existing = existingCols.map((col) => col.Field);
 
@@ -328,10 +312,6 @@ const alterModule = async (req, res, next) => {
       }
     }
 
-    /* -----------------------------------------------------------
-     INSERT (CREATE NEW RECORD)
-     FIXED: Dynamic columns now wrapped in backticks
-    ----------------------------------------------------------- */
     if (!data.record_id) {
       const cols = ["userId", ...Object.keys(payload).map((c) => `\`${c}\``)];
       const values = [userId, ...Object.values(payload).map(normalize)];
@@ -345,9 +325,6 @@ const alterModule = async (req, res, next) => {
       return res.json({ success: true, message: "Record created" });
     }
 
-    /* -----------------------------------------------------------
-     UPDATE EXISTING RECORD
-    ----------------------------------------------------------- */
     const updateSQL = Object.keys(payload)
       .map((key) => `\`${key}\`=?`)
       .join(",");
