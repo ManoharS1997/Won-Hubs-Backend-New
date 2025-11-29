@@ -1,6 +1,9 @@
 const mongoose = require("mongoose");
 const FormDesigner = require("../../model/mongoDb");
 const { db } = require("../../config/DB-connection");
+const { s3, PutObjectCommand } = require("../../utils/s3");
+const path = require("path");
+const crypto = require("crypto");
 
 const saveFormData = async (req, res) => {
   try {
@@ -217,20 +220,19 @@ const deleteModule = async (req, res) => {
 
 const alterModule = async (req, res, next) => {
   try {
-    console.log(req)
     const data = req.body || {};
-    const files = req.files || {};
+    const files = req.files || [];
 
     console.log("Incoming BODY:", data);
     console.log("Incoming FILES:", files);
 
+    // Required fields
     if (!data.activeTable || !data.tabName || !data.activeNav) {
       return res.status(400).json({
         success: false,
         message: "activeTable, tabName & activeNav are required",
       });
     }
-
     if (!data.userId) {
       return res.status(400).json({
         success: false,
@@ -240,36 +242,61 @@ const alterModule = async (req, res, next) => {
 
     const userId = data.userId;
 
+    // Safe table name
     let tableName = `${data.activeTable}__${data.tabName}__${data.activeNav}`
       .replace(/[^a-zA-Z0-9_]/g, "_")
       .toLowerCase();
 
+    // Build payload
     const payload = { ...data };
-
     delete payload.activeTable;
     delete payload.tabName;
     delete payload.activeNav;
     delete payload.activeUserData;
     delete payload.userId;
 
-    Object.keys(files).forEach((field) => {
-      const f = files[field][0];
-      payload[field] = {
-        originalName: f.originalname,
-        mimeType: f.mimetype,
-        fileName: f.filename,
-        path: f.path,
-      };
-    });
+    /* -----------------------------------------------------------
+     🔥 Upload Files to S3
+    ----------------------------------------------------------- */
+    for (const f of files) {
+      const fileKey = `${Date.now()}-${crypto
+        .randomBytes(8)
+        .toString("hex")}${path.extname(f.originalname)}`;
 
-    const normalize = (v) => (typeof v === "object" ? JSON.stringify(v) : v);
+      const uploadParams = {
+        Bucket: process.env.S3_BUCKET_NAME,
+        Key: fileKey,
+        Body: f.buffer,
+        ContentType: f.mimetype,
+      };
+
+      await s3.send(new PutObjectCommand(uploadParams));
+
+      const fileUrl = `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileKey}`;
+
+      // Replace field value with S3 URL
+      payload[f.fieldname] = fileUrl;
+    }
+
+    /* -----------------------------------------------------------
+     Normalize Values & SQL Type
+    ----------------------------------------------------------- */
+    const normalize = (v) => {
+      if (v === undefined || v === null) return null;
+      if (typeof v === "object") return JSON.stringify(v);
+      return v;
+    };
 
     const getType = (v) => {
+      if (v === null) return "VARCHAR(255)";
       if (typeof v === "object") return "LONGTEXT";
       if (String(v).length > 255) return "LONGTEXT";
       return "VARCHAR(255)";
     };
 
+    /* -----------------------------------------------------------
+     CREATE TABLE IF NOT EXISTS
+    ----------------------------------------------------------- */
     let baseSchema = `
       record_id INT AUTO_INCREMENT PRIMARY KEY,
       userId VARCHAR(255),
@@ -284,6 +311,9 @@ const alterModule = async (req, res, next) => {
       `CREATE TABLE IF NOT EXISTS \`${tableName}\` (${baseSchema})`
     );
 
+    /* -----------------------------------------------------------
+     ALTER TABLE → Add missing columns
+    ----------------------------------------------------------- */
     const [existingCols] = await db.query(`SHOW COLUMNS FROM \`${tableName}\``);
     const existing = existingCols.map((col) => col.Field);
 
@@ -297,8 +327,12 @@ const alterModule = async (req, res, next) => {
       }
     }
 
+    /* -----------------------------------------------------------
+     INSERT (CREATE NEW RECORD)
+     FIXED: Dynamic columns now wrapped in backticks
+    ----------------------------------------------------------- */
     if (!data.record_id) {
-      const cols = ["userId", ...Object.keys(payload)];
+      const cols = ["userId", ...Object.keys(payload).map((c) => `\`${c}\``)];
       const values = [userId, ...Object.values(payload).map(normalize)];
       const qMarks = cols.map(() => "?").join(",");
 
@@ -310,6 +344,9 @@ const alterModule = async (req, res, next) => {
       return res.json({ success: true, message: "Record created" });
     }
 
+    /* -----------------------------------------------------------
+     UPDATE EXISTING RECORD
+    ----------------------------------------------------------- */
     const updateSQL = Object.keys(payload)
       .map((key) => `\`${key}\`=?`)
       .join(",");
@@ -333,6 +370,7 @@ const getDynamicModuleData = async (req, res) => {
   try {
     let { activeTable, tabName, activeNav, userId } = req.query;
 
+    // Required validations
     if (!activeTable || !tabName || !activeNav) {
       return res.status(400).json({
         success: false,
@@ -347,10 +385,23 @@ const getDynamicModuleData = async (req, res) => {
       });
     }
 
+    // Create safe table name (must match alterModule)
     const tableName = `${activeTable}__${tabName}__${activeNav}`
       .replace(/[^a-zA-Z0-9_]/g, "_")
       .toLowerCase();
 
+    /* ---------------------------------------------------------
+      CHECK IF TABLE EXISTS 
+    --------------------------------------------------------- */
+    const [tableCheck] = await db.query(`SHOW TABLES LIKE ?`, [tableName]);
+
+    if (!tableCheck || tableCheck.length === 0) {
+      return res.json({ success: true, data: null });
+    }
+
+    /* ---------------------------------------------------------
+      FETCH LATEST RECORD FOR USER
+    --------------------------------------------------------- */
     const [rows] = await db.query(
       `SELECT * FROM \`${tableName}\` WHERE userId = ? ORDER BY record_id DESC LIMIT 1`,
       [userId]
@@ -360,19 +411,44 @@ const getDynamicModuleData = async (req, res) => {
       return res.json({ success: true, data: null });
     }
 
-    const cleaned = {};
     const record = rows[0];
+    const cleaned = {};
 
+    /* ---------------------------------------------------------
+      CLEAN + JSON PARSE ONLY IF VALID JSON
+    --------------------------------------------------------- */
     for (const key in record) {
+      const value = record[key];
+
+      // Never parse these fields
+      if (["record_id", "userId", "created_at"].includes(key)) {
+        cleaned[key] = value;
+        continue;
+      }
+
+      // If value is null → keep null
+      if (value === null || value === undefined) {
+        cleaned[key] = value;
+        continue;
+      }
+
+      // If string starts with http (S3 URL), do NOT JSON.parse
+      if (typeof value === "string" && value.startsWith("http")) {
+        cleaned[key] = value;
+        continue;
+      }
+
+      // Try JSON parse
       try {
-        cleaned[key] = JSON.parse(record[key]);
+        cleaned[key] = JSON.parse(value);
       } catch {
-        cleaned[key] = record[key];
+        cleaned[key] = value;
       }
     }
 
     return res.json({ success: true, data: cleaned });
   } catch (err) {
+    console.error("❌ getDynamicModuleData Error:", err);
     return res.status(500).json({
       success: false,
       message: err.message,
