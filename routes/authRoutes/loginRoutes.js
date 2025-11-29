@@ -10,4 +10,5 @@ router.post('/verify/password-change', loginController.checkPasswordAndSendEmail
 router.post('/verify/password-update-otp', loginController.verifyEmailOTP)
 router.put('/update/login-count', loginController.updateLoginCount)
 
+
 module.exports = router
