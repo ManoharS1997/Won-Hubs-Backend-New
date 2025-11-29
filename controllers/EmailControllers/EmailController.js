@@ -26,7 +26,7 @@ const sendExportEmail = async (req, res) => {
             )
             .join("");
 
-      
+
         const tableHtml = `
         <div style="font-family:Arial, Helvetica, sans-serif; padding:14px;">
 
@@ -66,7 +66,7 @@ const sendExportEmail = async (req, res) => {
         </div>
         `;
 
-    
+
         const transporter = nodemailer.createTransport({
             service: "gmail",
             auth: {
@@ -77,11 +77,11 @@ const sendExportEmail = async (req, res) => {
             }
         });
 
-     
+
         await transporter.sendMail({
             // from: process.env.ORG_EMAIL,
             from: process.env.email,
-            to: email||`sandhya.chattu@nowitservices.com`,
+            to: email || `sandhya.chattu@nowitservices.com`,
             subject: "Your Exported Data (Tab Details + History)",
             html: tableHtml
         });
@@ -95,6 +95,24 @@ const sendExportEmail = async (req, res) => {
             message: "Server error when sending email"
         });
     }
+};
+const EventEmailTemplate = ({ title, eventDate, startTime, endTime, meetLink })=> {
+    return `
+      <h2 style="color:#444;">You are invited to a new event!</h2>
+      
+      <p><strong>Event:</strong> ${title}</p>
+      <p><strong>Date:</strong> ${eventDate}</p>
+      <p><strong>Time:</strong> ${startTime} - ${endTime}</p>
+
+      ${meetLink ?
+            `<p><strong>Join Meeting:</strong> 
+           <a style="color:#1a73e8;" href="${meetLink}">${meetLink}</a>
+         </p>`
+            : ""}
+
+      <br/>
+      <p>Regards,<br/>WON Platform</p>
+    `;
 };
 
 module.exports = { sendExportEmail };

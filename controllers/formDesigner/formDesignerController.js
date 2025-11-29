@@ -113,6 +113,7 @@ const createModule = async (req, res) => {
     await module.save();
     res.status(201).json({ success: true, data: module });
   } catch (error) {
+    console.log("Error in createModule:", error);
     handleError(res, error, 400);
   }
 };

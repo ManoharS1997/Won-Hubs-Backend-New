@@ -416,6 +416,21 @@ const checkEmailExists = async (req, res) => {
   }
 };
 
+const groupEmailsCheck = async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ exists: false, error: 'Email is required' });
+  }
+  try {
+    const query = `SELECT 1 FROM group_names WHERE email = '${email}' LIMIT 1`;
+    const [users] = await db.execute(query)
+
+    res.json({ exists: users.length > 0 });
+  } catch (error) {
+    console.log(error)
+    res.status(500).json({ exists: false, error: 'Internal server error' });
+  }
+};
 
 
 
@@ -570,6 +585,31 @@ async function checkStatus(instanceId, region) {
   return result.Reservations[0].Instances[0].State.Name;
 }
 
+// function to get emails in the  groups and Users
+const getAllEmails = async (req, res) => {
+  try {
+    const query = `
+      SELECT email FROM users
+      UNION ALL
+      SELECT email FROM group_names
+    `;
+
+    const [rows] = await db.execute(query);
+
+    const emails = rows.map(r => r.email);
+
+    res.json({
+      emails,
+      count: emails.length
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+
 
 
 module.exports = {
@@ -580,5 +620,7 @@ module.exports = {
   getUsernameByEmail,
   recieveDemoRequest,
   createEC2Instance,
-  checkEmailExists
+  checkEmailExists,
+  groupEmailsCheck,
+  getAllEmails
 };

@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 const { Schema } = mongoose;
 
 const FormFieldSchema = new Schema({
-  type: { type: String, required: true },
+  type: { type: String},
   label: { type: String, required: true },
   name: { type: String, required: true },
   required: { type: Boolean, default: false },
@@ -54,11 +54,11 @@ const FormDesignerSchema = new Schema(
     departmentName: { type: String, default: "" },
     category: { type: String, default: "" },
     column:{type:Boolean,default:false},
+    subCategory: { type: String, default: "" },
+    designName:{ type: String, default: "" },
     formFields: [FormFieldSchema],
     formButtons: [FormButtonSchema],
-
     tabs: [TabSchema],
-
     selectedDepartments: SelectedDepartmentSchema,
     selectedViews: [{ type: String }],
   },
