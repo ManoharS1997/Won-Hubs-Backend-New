@@ -31,7 +31,7 @@ const authenticateToken = require("../utils/auth/authorization");
 
 const decodeAccessToken = require("../utils/auth/DecodeAccessToken.js");
 const { getOrganizationIdWithUserId } = require("../helpers/findOrgId.js");
-console.log("Server is starting....")
+console.log("Server is starting....");
 
 // Import Routes
 const zendeskConnectionRoutes = require("../routes/connectionRoutes/zendesk-routes");
@@ -129,7 +129,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json({ limit: "500mb" }));
 app.use(cookieParser());
-app.use(express.raw({ type: () => true }));
+// app.use(express.raw({ type: () => true }));
 app.use(bodyParser.urlencoded({ extended: true, limit: "500mb" }));
 // Serve Static Files
 // app.use(
@@ -143,7 +143,7 @@ app.use(bodyParser.urlencoded({ extended: true, limit: "500mb" }));
 // );
 // API Routes
 // app.use("/api", sharedRoutes);
-app.use('/api/tickets', ticketRoutes)
+app.use("/api/tickets", ticketRoutes);
 app.use("/api/zendesk/connections", zendeskConnectionRoutes);
 app.use("/api/zapier/connections", zapierConnectionRoutes);
 app.use("/api/slack/connections", slackConnectionRoutes);
@@ -151,7 +151,7 @@ app.use("/api/trello/connections", trelloConnectionRoutes);
 app.use("/api/connections/soap", testSoapRoutes);
 app.use("/api/admin/login", loginRoutes);
 app.use("/api/admin/token", tokenRoutes);
-app.use("/api/webhooks", webhookRoutes);
+app.use("/api/webhooks", express.raw({ type: "*/*" }), webhookRoutes);
 app.use("/api/api-keys", apiKeysRoutes);
 app.use("/api/company", companyRoutes);
 app.use("/api/cmdb", cmdbRoutes);
@@ -165,31 +165,30 @@ app.use("/api/partners", partnerRoutes);
 app.use("/api", sharedRoutes);
 // Created Routes And Controllers
 
-
-app.use('/sendemails', EmailRoutes) 
-app.use('/roles', RoleRoutes)
-app.use('/alerts', AlertRoutes)
-app.use('/notifications', NotificationRoutes)
-app.use('/ticket', TicketRoutes)
-app.use('/flows', FlowRoutes)
-app.use('/connections', ConnectionsRoutes)
-app.use('/core-transactions', CoreTransactionRoutes)
-app.use('AdminPortalForm', AdminPlatformroutes)
-app.use('/designs', DesignRoutes)// check here we had 
-app.use('/feedback', FeedbackRoutes)
-app.use('/template', TemplateRoutes)
-app.use('/ci_transitions', CITransitionRoutes)
-app.use('/documents', documentRoutes)
-app.use('/service-mapping', ServiceMappingRoutes)
-app.use('/sla', SLARoutes)
-app.use('/tasks', TaskRoutes)
-app.use('/approvals', ApprovalRoutes)
-app.use('/users', UserRoutes)
-app.use('/company', CompanyRoutes)
-app.use('/groups', groupRoutes)
-app.use('/locations', locationsRoutes)
+app.use("/sendemails", EmailRoutes);
+app.use("/roles", RoleRoutes);
+app.use("/alerts", AlertRoutes);
+app.use("/notifications", NotificationRoutes);
+app.use("/ticket", TicketRoutes);
+app.use("/flows", FlowRoutes);
+app.use("/connections", ConnectionsRoutes);
+app.use("/core-transactions", CoreTransactionRoutes);
+app.use("AdminPortalForm", AdminPlatformroutes);
+app.use("/designs", DesignRoutes); // check here we had
+app.use("/feedback", FeedbackRoutes);
+app.use("/template", TemplateRoutes);
+app.use("/ci_transitions", CITransitionRoutes);
+app.use("/documents", documentRoutes);
+app.use("/service-mapping", ServiceMappingRoutes);
+app.use("/sla", SLARoutes);
+app.use("/tasks", TaskRoutes);
+app.use("/approvals", ApprovalRoutes);
+app.use("/users", UserRoutes);
+app.use("/company", CompanyRoutes);
+app.use("/groups", groupRoutes);
+app.use("/locations", locationsRoutes);
 app.use("/api/form-designer", FormDesignerRoutes);
-app.use('/departments', departmentsRoutes)
+app.use("/departments", departmentsRoutes);
 app.use("/form-designer", ApiListRoutes);
 app.use((err, req, res, next) => {
   console.error("Unhandled error:", err);
@@ -552,12 +551,10 @@ app.post("/testRecord/:tableName", async (req, res) => {
   const schemaQuery = `SHOW COLUMNS FROM wonhubs.??`;
   connection.query(schemaQuery, [tableName], (schemaError, schemaResults) => {
     if (schemaError) {
-      return res
-        .status(500)
-        .json({
-          success: false,
-          errors: ["Database error: " + schemaError.message],
-        });
+      return res.status(500).json({
+        success: false,
+        errors: ["Database error: " + schemaError.message],
+      });
     }
 
     const errors = [];
@@ -757,11 +754,9 @@ app.delete("/deleteRecord/:table/:id", (req, res) => {
       }
     }
     console.log(`Record with ID ${id} deleted from ${table} successfully.`);
-    return res
-      .status(200)
-      .json({
-        message: `Record with ID ${id} deleted from ${table} successfully.`,
-      });
+    return res.status(200).json({
+      message: `Record with ID ${id} deleted from ${table} successfully.`,
+    });
   });
 });
 
@@ -1657,7 +1652,9 @@ async function startServer() {
       soap.listen(server, "/wsdl", userService, wsdlXML);
       server.listen(PORT, () => {
         console.log(`Server is running on http://localhost:${PORT}`);
-        console.log(`SOAP server running on http://localhost:${PORT}/wsdl?wsdl`);
+        console.log(
+          `SOAP server running on http://localhost:${PORT}/wsdl?wsdl`
+        );
         // startWatch(authClient); // Start watching Gmail when the server is ready
       });
     })
