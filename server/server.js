@@ -133,7 +133,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json({ limit: "500mb" }));
 app.use(cookieParser());
-app.use(express.raw({ type: () => true }));
+// app.use(express.raw({ type: () => true }));
 app.use(bodyParser.urlencoded({ extended: true, limit: "500mb" }));
 // Serve Static Files
 // app.use(
@@ -156,7 +156,7 @@ app.use("/api/trello/connections", trelloConnectionRoutes);
 app.use("/api/connections/soap", testSoapRoutes);
 app.use("/api/admin/login", loginRoutes);
 app.use("/api/admin/token", tokenRoutes);
-app.use("/api/webhooks", webhookRoutes);
+app.use("/api/webhooks", express.raw({ type: "*/*" }), webhookRoutes);
 app.use("/api/api-keys", apiKeysRoutes);
 app.use("/api/company", companyRoutes);
 app.use("/api/cmdb", cmdbRoutes);
@@ -194,7 +194,7 @@ app.use('/company', CompanyRoutes)
 app.use('/groups', groupRoutes)
 app.use('/locations', locationsRoutes)
 app.use("/api/form-designer", FormDesignerRoutes);
-app.use('/departments', departmentsRoutes)
+app.use("/departments", departmentsRoutes);
 app.use("/form-designer", ApiListRoutes);
 app.use("/calendar", CalendarRoutes);
 app.use((err, req, res, next) => {
@@ -666,12 +666,10 @@ app.post("/testRecord/:tableName", async (req, res) => {
   const schemaQuery = `SHOW COLUMNS FROM wonhubs.??`;
   connection.query(schemaQuery, [tableName], (schemaError, schemaResults) => {
     if (schemaError) {
-      return res
-        .status(500)
-        .json({
-          success: false,
-          errors: ["Database error: " + schemaError.message],
-        });
+      return res.status(500).json({
+        success: false,
+        errors: ["Database error: " + schemaError.message],
+      });
     }
 
     const errors = [];
@@ -871,11 +869,9 @@ app.delete("/deleteRecord/:table/:id", (req, res) => {
       }
     }
     console.log(`Record with ID ${id} deleted from ${table} successfully.`);
-    return res
-      .status(200)
-      .json({
-        message: `Record with ID ${id} deleted from ${table} successfully.`,
-      });
+    return res.status(200).json({
+      message: `Record with ID ${id} deleted from ${table} successfully.`,
+    });
   });
 });
 
@@ -1771,7 +1767,9 @@ async function startServer() {
       soap.listen(server, "/wsdl", userService, wsdlXML);
       server.listen(PORT, () => {
         console.log(`Server is running on http://localhost:${PORT}`);
-        console.log(`SOAP server running on http://localhost:${PORT}/wsdl?wsdl`);
+        console.log(
+          `SOAP server running on http://localhost:${PORT}/wsdl?wsdl`
+        );
         // startWatch(authClient); // Start watching Gmail when the server is ready
       });
     })

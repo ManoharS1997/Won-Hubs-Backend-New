@@ -21,14 +21,15 @@ const upload = multer({
   },
 });
 
+router.post("/dynamic/save", upload.any(), alterModule);
+router.post("/getModuleByFields", getModuleByFields);
+router.post("/tab/assign-api", assignApi);
+
 router.post("/", createModule);
 router.get("/", getModules);
 router.get("/:id", getModuleById);
 router.put("/:id", updateModule);
 router.delete("/:id", deleteModule);
-router.post("/getModuleByFields", getModuleByFields);
-router.post("/tab/assign-api", assignApi);
-router.post("/dynamic/save", upload.any(), alterModule);
 router.get("/dynamic/get", getDynamicModuleData);
 
 module.exports = router;
